@@ -331,7 +331,7 @@ def create_tree_metrics(
                 exclusive_leaves_types_metrics,
             )
         else:
-            leaf_metrics = leaves_metrics.get(node_name, [])
+            leaf_metrics = leaves_metrics.get(node_name, []).copy()
             if not exclusive_leaves_types_metrics or len(leaf_metrics) == 0:
                 leaf_metrics += types_metrics.get(node_type_tmp, [])
             for metric_name in leaf_metrics:
