@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 
 # Precision/Recall/F1 are appended "tree" to avoid confusion with the same metrics being
 # computed on the leaves results. When aggregating results, this could mess up results.
-DEFAULT_SCORE_KEY = "score"
 PRECISION_KEY = "precision_tree"
 RECALL_KEY = "recall_tree"
 F1_KEY = "f1_tree"
@@ -88,11 +87,14 @@ def treeval(
                 stacklevel=2,
             )
         return _aggregate_results_per_metric(
-            results, tree_metrics, hierarchical_averaging=hierarchical_averaging
+            results,
+            tree_metrics,
+            metrics,
+            hierarchical_averaging=hierarchical_averaging,
         )
     if aggregate_results_per_leaf_type:
         return _aggregate_results_per_leaf_type(
-            results, schema, hierarchical_averaging=hierarchical_averaging
+            results, schema, metrics, hierarchical_averaging=hierarchical_averaging
         )
     return results
 
@@ -181,7 +183,9 @@ def _recursive_parse(
                     # If the items are dictionaries, we aggregate the tree results per
                     # metric to be able to assign pairs of references/predictions.
                     if is_list_of_dicts:
-                        score = _aggregate_results_per_metric(score, tree_metrics)
+                        score = _aggregate_results_per_metric(
+                            score, tree_metrics, metrics
+                        )
                     metrics_results[idx].append(score)
 
                     # Adds the score to the matrix.
@@ -189,7 +193,7 @@ def _recursive_parse(
                     # `get_metric_score`, it should only be called in other cases.
                     for metric_name, metric_score in score.items():
                         metrics_scores[metric_name][idx].append(
-                            _get_metric_score(metric_score, metric_name)
+                            metrics[metric_name].get_metric_score(metric_score)
                             if not is_list_of_dicts
                             else metric_score
                         )
@@ -198,10 +202,12 @@ def _recursive_parse(
             # TODO support non-unidirectional metrics (when not higher/lower better)
             for metric_name in metrics_scores:
                 metric_score_array = np.array(metrics_scores[metric_name])
-                if len(metrics_scores) > 1:  # + any non (0, 1)
+                if len(metrics_scores) > 1:  # no need if only one metric
                     if metrics[metric_name].score_range != (0, 1):
-                        # TODO handle min bound
-                        metric_score_array /= metrics[metric_name].score_range[1]
+                        low_bound, high_bound = metrics[metric_name].score_range
+                        metric_score_array = (
+                            metric_score_array.clip(low_bound, high_bound) - low_bound
+                        ) / (high_bound - low_bound)
                     if not metrics[metric_name].higher_is_better:
                         metric_score_array = (
                             np.ones_like(metric_score_array) - metric_score_array
@@ -269,6 +275,7 @@ def _recursive_parse(
 
     # Compute the precision, recall and f1 scores of the predicted nodes
     # TODO ratio of null (fp/fn)
+    # TODO calibration?
     if root_node:
         # tp + fn should be equal to len(references) * count_dictionary_nodes(schema)
         total_num_nodes, tp, fn = pr_cache
@@ -285,12 +292,6 @@ def _recursive_parse(
         )
 
     return results
-
-
-def _get_metric_score(metric_result: dict, metric_name: str) -> float:
-    if metric_name in metric_result:  # TODO implement within TreevalMetric
-        return metric_result[metric_name]
-    return metric_result[DEFAULT_SCORE_KEY]
 
 
 def create_tree_metrics(
@@ -377,7 +378,10 @@ def __get_unique_metrics_from_tree_metrics(tree_metrics: dict) -> set[str]:
 
 
 def _aggregate_results_per_metric(
-    results: dict, tree_metrics: dict, hierarchical_averaging: bool = False
+    results: dict,
+    tree_metrics: dict,
+    metrics: dict[str, TreevalMetric],
+    hierarchical_averaging: bool = False,
 ) -> dict[str, float]:
     """
     Aggregate the tree treeval results per metric.
@@ -409,7 +413,7 @@ def _aggregate_results_per_metric(
     """
     # Gather the scores of all individual metrics in all leaves.
     metrics_results = __aggregate_results_per_metric(
-        results, tree_metrics, hierarchical_averaging=hierarchical_averaging
+        results, tree_metrics, metrics, hierarchical_averaging=hierarchical_averaging
     )
 
     # If hierarchical averaging is enabled, the averaging is already done in the child
@@ -431,7 +435,10 @@ def _aggregate_results_per_metric(
 
 
 def __aggregate_results_per_metric(
-    results: dict, tree_metrics: dict, hierarchical_averaging: bool = False
+    results: dict,
+    tree_metrics: dict,
+    metrics: dict[str, TreevalMetric],
+    hierarchical_averaging: bool = False,
 ) -> dict[str, float | list[float]]:
     # Same as _aggregate_results_per_metric but recursive and discarding
     # precision/recall/f1 entries that are added at the end.
@@ -444,7 +451,10 @@ def __aggregate_results_per_metric(
             # Need to check that the keys of the branch results are all already present
             # in the metrics_results dictionary before merging them
             branch_results = __aggregate_results_per_metric(
-                results_node, value, hierarchical_averaging=hierarchical_averaging
+                results_node,
+                value,
+                metrics,
+                hierarchical_averaging=hierarchical_averaging,
             )
             for key_branch in branch_results:
                 if key_branch not in metrics_results:
@@ -455,7 +465,7 @@ def __aggregate_results_per_metric(
                 if metric_name not in metrics_results:
                     metrics_results[metric_name] = []
                 metrics_results[metric_name].append(
-                    _get_metric_score(metric_results, metric_name)
+                    metrics[metric_name].get_metric_score(metric_results)
                 )
 
     # Averages the scores of the current branch if hierarchical averaging
@@ -468,7 +478,10 @@ def __aggregate_results_per_metric(
 
 
 def _aggregate_results_per_leaf_type(
-    results: dict, schema: dict, hierarchical_averaging: bool = False
+    results: dict,
+    schema: dict,
+    metrics: dict[str, TreevalMetric],
+    hierarchical_averaging: bool = False,
 ) -> dict[dict[str, float]]:
     """
     Aggregate the tree treeval results per leaf type.
@@ -497,7 +510,9 @@ def _aggregate_results_per_leaf_type(
         to the average of its scores found within the results tree.
     """
     # Gather the scores of all individual metrics in all leaves.
-    results_types = __aggregate_results_per_leaf_type(results, schema)
+    results_types = __aggregate_results_per_leaf_type(
+        results, schema, metrics, hierarchical_averaging=hierarchical_averaging
+    )
 
     # If hierarchical averaging is enabled, the averaging is already done in the child
     # method. Otherwise, it returned the list of all scores that we need to average.
@@ -518,7 +533,10 @@ def _aggregate_results_per_leaf_type(
 
 
 def __aggregate_results_per_leaf_type(
-    results: dict, schema: dict, hierarchical_averaging: bool = False
+    results: dict,
+    schema: dict,
+    metrics: dict[str, TreevalMetric],
+    hierarchical_averaging: bool = False,
 ) -> dict[dict[str, float | list[float]]]:
     # Same as _aggregate_results_per_leaf_type but recursive and discarding
     # precision/recall/f1 entries that are added at the end.
@@ -531,7 +549,10 @@ def __aggregate_results_per_leaf_type(
             # Need to check that the keys of the branch results are all already present
             # in the metrics_results dictionary before merging them
             branch_results = __aggregate_results_per_leaf_type(
-                results_node, type_name, hierarchical_averaging=hierarchical_averaging
+                results_node,
+                type_name,
+                metrics,
+                hierarchical_averaging=hierarchical_averaging,
             )
             for key_branch, metrics_branch in branch_results.items():
                 if key_branch not in results_types:
@@ -547,7 +568,7 @@ def __aggregate_results_per_leaf_type(
                 if metric_name not in results_types[type_name]:
                     results_types[type_name][metric_name] = []
                 results_types[type_name][metric_name].append(
-                    _get_metric_score(metric_results, metric_name)
+                    metrics[metric_name].get_metric_score(metric_results)
                 )
 
     # Compute the mean of each type scores

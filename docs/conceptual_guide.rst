@@ -4,13 +4,24 @@
 Conceptual guide of evaluating trees
 ====================================
 
-We detail in this page the conceptual philosophy followed by treeval of evaluating trees.
+This page details how treeval works conceptually.
 
-Evaluating dictionaries
+Evaluating tree-based data
 -----------------------------
+
+Evaluating tree-based data, i.e. computing metrics between reference and hypothesis trees, can be tricky as the samples can feature complex structure and various types of data.
 
 Recursively parses the two predicted and reference dictionaries, and run metrics on each common **leaves**.
 
+Tree structure covered by treeval
+---------------------------------
+
+Dict/lists
+
+Everything else (other types) are treated as leaves.
+
+Recursively parses the two predicted and reference dictionaries, and run metrics on each common **leaves**.
+Lists --> similarity matrix --> assignment problem
 
 Evaluation of lists of items
 -----------------------------

@@ -106,6 +106,25 @@ class TreevalMetric:
         """
         return self.compute(predictions, references)
 
+    def get_metric_score(self, metric_result: dict) -> float:
+        """
+        Return the absolute score value of the results returned by the metric.
+
+        By default, the metric modules returns a dictionary mapping specific results to
+        their values. This allows to compute a metric, return its value along with
+        additional results. This method returns the absolute metric score. By default,
+        it is either mapped by the "score" key, or the key equal to the name of the
+        metric (``metric.name``). This method is especially used when assigning pairs of
+        predictions and references when evaluating lists of items.
+        It can be overridden to handle specific cases.
+
+        :param metric_result: metric results as a dictionary.
+        :return: absolute metric score value as a floating point number.
+        """
+        if self.name in metric_result:
+            return metric_result[self.name]
+        return metric_result[DEFAULT_SCORE_KEY]
+
 
 class BLEU(TreevalMetric):
     """BLEU, wrapper of the Hugging Face evaluation module."""
