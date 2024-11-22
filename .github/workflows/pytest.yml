@@ -36,7 +36,7 @@ jobs:
         run: python -m pytest --cov=./ --cov-report=xml -n logical --durations=0 -v tests
 
       - name: Codecov
-        uses: codecov/codecov-action@v4.5.0
+        uses: codecov/codecov-action@v5.0.7
 
   build:
     runs-on: ubuntu-latest
