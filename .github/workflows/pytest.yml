@@ -33,7 +33,7 @@ jobs:
           pip install -e ".[tests]"
 
       - name: Test with pytest
-        run: pytest --cov=./ --cov-report=xml -n logical --durations=0 -v tests
+        run: python -m pytest --cov=./ --cov-report=xml -n logical --durations=0 -v tests
 
       - name: Codecov
         uses: codecov/codecov-action@v4.5.0
