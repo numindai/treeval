@@ -1,5 +1,7 @@
 """Tests for the alignment method."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from treeval.utils import compute_matching_from_score_matrix

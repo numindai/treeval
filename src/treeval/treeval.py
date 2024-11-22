@@ -158,6 +158,9 @@ def _recursive_parse(
             metrics_scores = {  # {metric_name: (n,m)}, score for assignment only
                 metric: [[] for _ in range(len(ref))] for metric in __metrics_set
             }
+            # TODO count difference of lengths between two lists -> find way to penalize
+            #  - penalty in the metrics? inject `n` worst score (n = abs(diff)))
+            #  - report additional measurement on the expected/prediction num of items
 
             # Compute metrics, unbatched as we need to match the references/predictions.
             # For simplicity reasons, the precision/recall/f1 of dictionary items (when

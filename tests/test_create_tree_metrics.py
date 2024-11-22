@@ -1,5 +1,7 @@
 """Tests for the treeval method."""
 
+from __future__ import annotations
+
 import pytest
 from treeval import create_tree_metrics
 
