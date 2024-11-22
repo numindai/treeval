@@ -1,5 +1,7 @@
 """Tests for utils methods."""
 
+from __future__ import annotations
+
 import pytest
 from treeval.utils import count_dictionary_nodes, merge_dicts
 

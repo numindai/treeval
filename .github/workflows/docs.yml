@@ -1,9 +1,10 @@
 name: "Docs Build"
 
 on:
-  pull_request_target:
-    types:
-      - opened
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   docs:
@@ -21,9 +22,10 @@ jobs:
         # Install local package with tests dependencies extras
         python -m pip install --upgrade pip
         pip install -e ".[docs]"
-    - uses: ammaraskar/sphinx-action@master
-      with:
-        docs-folder: "docs/"
+    - name: directly build sphinx
+      run: |
+        cd docs
+        make html
     - uses: actions/upload-artifact@v4
       with:
         name: DocumentationHTML

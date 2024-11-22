@@ -1,5 +1,7 @@
 """Tests for the treeval method."""
 
+from __future__ import annotations
+
 import pytest
 from treeval import aggregate_results_per_leaf_type, aggregate_results_per_metric
 from treeval.treeval import _PRF_METRIC_NAMES

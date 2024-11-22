@@ -1,5 +1,7 @@
 """Tests for the treeval method."""
 
+from __future__ import annotations
+
 import pytest
 from treeval import create_tree_metrics
 
@@ -30,7 +32,7 @@ TEST_CASES = [
             "n2": {"sacrebleu"},
             "n3": {"exact_match", "sacrebleu"},
             "n4": {"accuracy"},
-            "n5": {"accuracy", "f1"},
+            "n5": {"accuracy", "f1", "exact_match"},
             "n6": {"sacrebleu"},
             "n7": {"sacrebleu", "f1"},
             "n8": {"n81": {"accuracy"}, "n82": {"sacrebleu"}, "n83": {"sacrebleu"}},
@@ -42,7 +44,7 @@ TEST_CASES = [
             "n2": {"sacrebleu"},
             "n3": {"sacrebleu", "exact_match"},
             "n4": {"accuracy"},
-            "n5": {"accuracy", "exact_match", "f1"},
+            "n5": {"accuracy", "f1"},
             "n6": {"sacrebleu"},
             "n7": {"sacrebleu", "f1"},
             "n8": {"n81": {"accuracy"}, "n82": {"sacrebleu"}, "n83": {"sacrebleu"}},
