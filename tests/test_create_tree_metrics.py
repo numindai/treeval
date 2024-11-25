@@ -18,7 +18,6 @@ TEST_CASES = [
             "n5": ["accuracy", "f1"],
             "n7": ["sacrebleu", "f1"],
             "n8": {"n82": ["sacrebleu"]},
-            "n9": ["sacrebleu"],
             "n10": {"n10_int": ["accuracy"], "n10_string": ["sacrebleu"]},
         },
         {
@@ -26,6 +25,7 @@ TEST_CASES = [
             "integer": ["accuracy"],
             "number": ["exact_match"],
             "datetime": ["sacrebleu"],
+            (): ["exact_match"],
         },
         {
             "n1": {"exact_match", "sacrebleu"},
@@ -36,7 +36,7 @@ TEST_CASES = [
             "n6": {"sacrebleu"},
             "n7": {"sacrebleu", "f1"},
             "n8": {"n81": {"accuracy"}, "n82": {"sacrebleu"}, "n83": {"sacrebleu"}},
-            "n9": {"sacrebleu"},
+            "n9": {"exact_match"},
             "n10": {"n10_int": {"accuracy"}, "n10_string": {"sacrebleu"}},
         },
         {
@@ -48,7 +48,7 @@ TEST_CASES = [
             "n6": {"sacrebleu"},
             "n7": {"sacrebleu", "f1"},
             "n8": {"n81": {"accuracy"}, "n82": {"sacrebleu"}, "n83": {"sacrebleu"}},
-            "n9": {"sacrebleu"},
+            "n9": {"exact_match"},
             "n10": {"n10_int": {"accuracy"}, "n10_string": {"sacrebleu"}},
         },
     ),

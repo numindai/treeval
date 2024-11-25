@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="150" viewBox="0 0 500 150">
+  <!-- Text -->
+  <text x="20" y="110" font-family="Arial, sans-serif" font-size="64" fill="#2D572C" font-weight="bold">
+    Treeval
+  </text>
+
+  <!-- Abstract Tree -->
+  <circle cx="320" cy="50" r="10" fill="#2D572C" />
+  <line x1="320" y1="60" x2="280" y2="90" stroke="#2D572C" stroke-width="4" />
+  <line x1="320" y1="60" x2="360" y2="90" stroke="#2D572C" stroke-width="4" />
+  <circle cx="280" cy="90" r="8" fill="#A2C97E" />
+  <circle cx="360" cy="90" r="8" fill="#A2C97E" />
+  <line x1="280" y1="98" x2="260" y2="120" stroke="#A2C97E" stroke-width="3" />
+  <line x1="280" y1="98" x2="300" y2="120" stroke="#A2C97E" stroke-width="3" />
+  <circle cx="260" cy="120" r="6" fill="#6DA267" />
+  <circle cx="300" cy="120" r="6" fill="#6DA267" />
+  <line x1="360" y1="98" x2="340" y2="120" stroke="#A2C97E" stroke-width="3" />
+  <line x1="360" y1="98" x2="380" y2="120" stroke="#A2C97E" stroke-width="3" />
+  <circle cx="340" cy="120" r="6" fill="#6DA267" />
+  <circle cx="380" cy="120" r="6" fill="#6DA267" />
+</svg>

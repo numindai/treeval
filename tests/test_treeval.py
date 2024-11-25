@@ -19,7 +19,6 @@ __tree_metrics_complete_schema = create_tree_metrics(
         "n5": ["accuracy"],
         "n7": ["sacrebleu"],
         "n8": {"n82": ["sacrebleu"]},
-        "n9": ["sacrebleu"],
         "n10": {"n10_int": ["accuracy"], "n10_string": ["sacrebleu"]},
     },
     {
@@ -27,6 +26,7 @@ __tree_metrics_complete_schema = create_tree_metrics(
         "integer": ["accuracy"],
         "number": ["accuracy"],
         "datetime": ["sacrebleu"],
+        (): ["exact_match"],  # choice among list TODO doc
     },
 )
 DATA_CASES = [
@@ -189,17 +189,7 @@ DATA_CASES = [
                     }
                 },
             },
-            "n9": {
-                "sacrebleu": {
-                    "score": 0.0,
-                    "counts": [1, 0, 0, 0],
-                    "totals": [1, 0, 0, 0],
-                    "precisions": [100.0, 0.0, 0.0, 0.0],
-                    "bp": 1.0,
-                    "sys_len": 1,
-                    "ref_len": 1,
-                }
-            },
+            "n9": {"exact_match": {"exact_match": 1.0}},
             "n10": {"accuracy": {"accuracy": 0.5}, "sacrebleu": {"sacrebleu": 0.0}},
             "precision_tree": 1.0,
             "recall_tree": 1.0,

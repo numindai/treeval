@@ -51,6 +51,6 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "furo"
 html_title = f"{project.capitalize()}'s docs"
-# html_logo = "assets/logo_stroke.png"
-# html_favicon = "assets/favicon.png"
+html_logo = "resources/treeval_logo.svg"
+# html_favicon = "resources/favicon.png"
 # tikz_proc_suite = "GhostScript"  # required for readthedocs, produce png, not svg
