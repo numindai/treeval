@@ -17,7 +17,7 @@ In a nutshell
 
 Methods
 -------
-*******
+Detailed documentation:
 
 """
 
