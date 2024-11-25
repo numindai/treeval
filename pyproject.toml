@@ -42,6 +42,7 @@ dependencies = [
     "numpy",  # used for assignment problem by linear_sum_assignment method
     "scipy>=1.4.0",  # benefits from the latest linear_sum_assignment revision
     "evaluate",  # used for metrics wrappers
+    "Levenshtein",  # used for edit distance metric
 ]
 
 [project.optional-dependencies]

@@ -1,4 +1,25 @@
-"""Main module."""
+"""
+Main treeval module exposing the main methods.
+
+In a nutshell
+**************
+
+* :py:func:`treeval.treeval` is the treeval method computing metrics over a batch of
+  pairs of references and predictions;
+* :py:func:`treeval.create_tree_metrics` provides an easy way to create a
+  ``tree_metrics``, to be used with py:func:`treeval.treeval`, from mappings of leaf
+  types and metrics names;
+* :py:func:`treeval.aggregate_results_per_metric` and
+  :py:func:`treeval.aggregate_results_per_leaf_type` aggregates the tree results of
+  :py:func:`treeval.treeval` per metric and/or leaf type;
+* :py:func:`treeval.load_json_files` is a useful method loading a list of JSON files and
+  decoding them into dictionaries.
+
+Methods
+-------
+*******
+
+"""
 
 from .treeval import (
     _aggregate_results_per_leaf_type as aggregate_results_per_leaf_type,

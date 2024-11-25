@@ -1,32 +1,22 @@
-name: "Docs Build"
+# Build docs preview in pull-requests.
 
+name: docs/preview
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  pull_request_target:
+    types:
+      - opened
+    # Execute this action only on PRs that touch
+    # documentation files.
+    # paths:
+    #   - "docs/**"
+
+permissions:
+  pull-requests: write
 
 jobs:
-  docs:
+  documentation-links:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.12
-        cache: pip
-        cache-dependency-path: pyproject.toml
-    - name: Install dependencies
-      run: |
-        # Install local package with tests dependencies extras
-        python -m pip install --upgrade pip
-        pip install -e ".[docs]"
-    - name: directly build sphinx
-      run: |
-        cd docs
-        make html
-    - uses: actions/upload-artifact@v4
-      with:
-        name: DocumentationHTML
-        path: docs/_build/html/
+      - uses: readthedocs/actions/preview@v1
+        with:
+          project-slug: "treeval"

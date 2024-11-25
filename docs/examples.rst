@@ -1,5 +1,10 @@
-.. _treeval-examples-label:
 
 ===================================
 Code examples
 ===================================
+
+
+Aggregating results
+-----------------------------
+
+:ref:`Treeval evaluation method`

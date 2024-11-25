@@ -50,7 +50,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "furo"
-html_title = f"{project}'s docs"
+html_title = f"{project.capitalize()}'s docs"
 # html_logo = "assets/logo_stroke.png"
 # html_favicon = "assets/favicon.png"
 # tikz_proc_suite = "GhostScript"  # required for readthedocs, produce png, not svg
