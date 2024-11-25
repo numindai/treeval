@@ -6,7 +6,9 @@
 Treeval documentation
 ======================
 
-Welcome to Treeval's documentation.
+.. image:: /resources/treeval_logo.svg
+  :align: center
+  :scale: 100%
 
 Treeval is a Python package providing an easy and flexible way to evaluate the matching of tree-based data, i.e. dictionaries. It is initially developed to evaluate the results of `structured data extraction tasks <https://numind.ai/blog/nuextract-a-foundation-model-for-structured-extraction>`_ from language models, but can be used with any type of leaf values and metrics.
 

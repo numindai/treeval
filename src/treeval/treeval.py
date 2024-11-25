@@ -278,7 +278,6 @@ def _recursive_parse(
 
     # Compute the precision, recall and f1 scores of the predicted nodes
     # TODO ratio of null (fp/fn)
-    # TODO calibration?
     if root_node:
         # tp + fn should be equal to len(references) * count_dictionary_nodes(schema)
         total_num_nodes, tp, fn = pr_cache
@@ -299,8 +298,8 @@ def _recursive_parse(
 
 def create_tree_metrics(
     schema: dict,
-    leaves_metrics: dict,
-    types_metrics: dict[str, Sequence[str]],
+    leaves_metrics: dict | None = None,
+    types_metrics: dict[str | tuple, Sequence[str]] | None = None,
     exclusive_leaves_types_metrics: bool = False,
 ) -> dict:
     """
@@ -312,10 +311,11 @@ def create_tree_metrics(
     :param schema: structure of the tree as a dictionary specifying each leaf type.
     :param leaves_metrics: dictionary with the same tree structure as the provided
         ``schema`` specifying the metrics to compute for specific leaves.
+        (default: ``None``)
     :param types_metrics: dictionary mapping the types specified in the provided
         ``schema`` to the metrics to compute for the leaves of these types. All types
         names must be strings, except the empty tuple ``()`` which is used for choice
-        lists.
+        lists. (default: ``None``)
     :param exclusive_leaves_types_metrics: an option allowing to make the metrics
         specified in ``leaves_metrics`` to be exclusive to certain leaves, excluding the
         metrics that should cover them specified in the ``types_metrics`` argument.
@@ -329,6 +329,12 @@ def create_tree_metrics(
     :return: tree identical to ``schema`` where leaf values reference to the **set** of
         names of metrics to use to evaluate them.
     """
+    # Safety check
+    if not leaves_metrics:
+        leaves_metrics = {}
+    if not types_metrics:
+        types_metrics = {}
+
     tree_metrics = {}
     for node_name, node_type in schema.items():
         if isinstance(node_type, list):
