@@ -125,6 +125,7 @@ def _recursive_parse(
     # List --> match the elements in the lists of each reference/prediction pair
     # Lists of choice do not fall in this condition as they are evaluated as single
     # leaves in the above if condition.
+    # TODO differentiate list of items and choice/classification
     # TODO handle multilabel classification
     if isinstance(predictions[0], list):
         # mean of aligned element match scores

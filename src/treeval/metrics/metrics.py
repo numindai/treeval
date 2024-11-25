@@ -146,6 +146,20 @@ class ROUGE(TreevalMetric):
         super().__init__(evaluate.load("rouge"))
 
 
+class MAUVE(TreevalMetric):
+    """MAUVE, wrapper of the Hugging Face evaluation module."""
+
+    def __init__(self) -> None:
+        super().__init__(evaluate.load("mauve"))
+
+
+class METEOR(TreevalMetric):
+    """METEOR, wrapper of the Hugging Face evaluation module."""
+
+    def __init__(self) -> None:
+        super().__init__(evaluate.load("meteor"))
+
+
 class Accuracy(TreevalMetric):
     """Precision, wrapper of the Hugging Face evaluation module."""
 
@@ -186,6 +200,27 @@ class ExactMatch(TreevalMetric):
 
     def __init__(self) -> None:
         super().__init__(evaluate.load("exact_match"))
+
+
+class BERTScore(TreevalMetric):
+    """BERTScore, wrapper of the Hugging Face evaluation module."""
+
+    def __init__(self) -> None:
+        super().__init__(evaluate.load("bertscore"))
+
+
+class Perplexity(TreevalMetric):
+    """Perplexity, wrapper of the Hugging Face evaluation module."""
+
+    def __init__(self) -> None:
+        super().__init__(evaluate.load("perplexity"))
+
+
+class RSquared(TreevalMetric):
+    """RSquared, wrapper of the Hugging Face evaluation module."""
+
+    def __init__(self) -> None:
+        super().__init__(evaluate.load("r_squared"))
 
 
 class Levenshtein(TreevalMetric):
