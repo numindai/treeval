@@ -10,4 +10,5 @@ TYPES_METRICS = {
     "number": {"exact_match"},
     "boolean": {"boolean_accuracy"},
     "string": {"levenshtein", "bertscore"},
+    (): {"exact_match"},
 }

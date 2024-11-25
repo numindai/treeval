@@ -1,5 +1,7 @@
 # Treeval
 
+[Documentation](https://treeval.readthedocs.io/en/latest/)
+
 ## Code examples
 
 ```Python

@@ -313,7 +313,9 @@ def create_tree_metrics(
     :param leaves_metrics: dictionary with the same tree structure as the provided
         ``schema`` specifying the metrics to compute for specific leaves.
     :param types_metrics: dictionary mapping the types specified in the provided
-        ``schema`` to the metrics to compute for the leaves of these types.
+        ``schema`` to the metrics to compute for the leaves of these types. All types
+        names must be strings, except the empty tuple ``()`` which is used for choice
+        lists.
     :param exclusive_leaves_types_metrics: an option allowing to make the metrics
         specified in ``leaves_metrics`` to be exclusive to certain leaves, excluding the
         metrics that should cover them specified in the ``types_metrics`` argument.
@@ -329,7 +331,10 @@ def create_tree_metrics(
     """
     tree_metrics = {}
     for node_name, node_type in schema.items():
-        node_type_tmp = node_type[0] if isinstance(node_type, list) else node_type
+        if isinstance(node_type, list):
+            node_type_tmp = node_type[0] if len(node_type) == 1 else ()  # else choice
+        else:
+            node_type_tmp = node_type
         if isinstance(node_type_tmp, dict):
             tree_metrics[node_name] = create_tree_metrics(
                 node_type_tmp,
