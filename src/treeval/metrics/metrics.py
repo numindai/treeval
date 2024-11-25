@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import evaluate
 from evaluate import EvaluationModule
+from Levenshtein import distance
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -43,15 +44,13 @@ class TreevalMetric:
 
     def __init__(
         self,
-        module: Callable | EvaluationModule,
+        module: Callable | EvaluationModule | None,
         name: str | None = None,
         score_range: tuple[float | int, float | int] = (0, 1),
         higher_is_better: bool = True,
     ) -> None:
         self._module = module
-        self._is_hf_module = EvaluationModule is not None and isinstance(
-            self._module, EvaluationModule
-        )
+        self._is_hf_module = isinstance(self._module, EvaluationModule)
         if name is None and self._is_hf_module:
             self.name = self._module.name
         else:
@@ -187,6 +186,40 @@ class ExactMatch(TreevalMetric):
 
     def __init__(self) -> None:
         super().__init__(evaluate.load("exact_match"))
+
+
+class Levenshtein(TreevalMetric):
+    """
+    Levenshtein distance, based on the `"Levenshtein" PyPi package <https://github.com/rapidfuzz/Levenshtein>`_.
+
+    This metric, also called "edit distance", measures the number of editions, deletions
+    and additions to perform on a string so that it becomes identical to a second one.
+    This metric returns two entries:
+
+    * ``levenshtein``: corresponds to an indel string similarity ratio normalized
+      between [0, 1]. It is equivalent to the ``Levenshtein.ratio`` method.
+    * ``edit_distance``: the actual average edit distance between the references and
+      predictions.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(None, "levenshtein")
+
+    def _levenshtein_distance(
+        self,
+        predictions: Sequence[Any],
+        references: Sequence[Any],
+    ) -> dict:
+        results, ratios = [], []
+        for prediction, reference in zip(predictions, references):
+            edit_distance = distance(prediction, reference)
+            results.append(edit_distance)
+            ratios.append(edit_distance / (len(prediction) + len(reference)))
+
+        return {
+            self.name: 1 - sum(ratios) / len(ratios),
+            "edit_distance": sum(results) / len(results),
+        }
 
 
 class BooleanAccuracy(TreevalMetric):

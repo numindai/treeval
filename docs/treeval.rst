@@ -1,11 +1,7 @@
-.. _treeval-label:
 
 ===================================
-Treeval evaluation method
+Treeval method
 ===================================
-
-Treeval methods
------------------------------
 
 .. automodule:: treeval
    :members:

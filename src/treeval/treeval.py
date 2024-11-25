@@ -43,7 +43,10 @@ def treeval(
 
     :param predictions: list of dictionary predictions.
     :param references: list of dictionary references.
-    :param schema: structure of the tree as a dictionary specifying each leaf type.
+    :param schema: schema of the tree as a dictionary specifying each leaf type. The
+        references must all follow this exact tree structure, while the predictions can
+        have mismatching branches which will impact the tree precision/recall/f1 scores
+        returned by the method.
     :param metrics: metrics to use to evaluate the leaves of the trees.
     :param tree_metrics: dictionary with the same schema/structure as ``schema``
         specifying at each leaf the set of metrics to use for evaluate them, referenced
@@ -70,7 +73,7 @@ def treeval(
     """
     # Check number of predictions/references
     if len(predictions) != len(references):
-        msg = "Number of predictions must be equal to the number of references."
+        msg = "The number of predictions must be equal to the number of references."
         raise ValueError(msg)
 
     # Recursively parses the schema and computes the metrics scores at the leaves
@@ -217,8 +220,7 @@ def _recursive_parse(
             # Average the normalized arrays
             if len(metrics_scores) > 1:  # [(n,m)] --> (s,n,m) --> (n,m)
                 metrics_scores_average = np.mean(
-                    np.stack(list(metrics_scores.values()), axis=0),
-                    axis=0,
+                    np.stack(list(metrics_scores.values()), axis=0), axis=0
                 )
             else:
                 metrics_scores_average = next(iter(metrics_scores.values()))

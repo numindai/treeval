@@ -1,8 +1,7 @@
 
-.. _treeval-score-label:
 
 ====================================
-The treeval score
+The Treeval score
 ====================================
 
 Purpose.

@@ -19,7 +19,7 @@ Treeval can be installed from PyPi by running:
 
 ..  code-block:: bash
 
-    pip install miditok
+    pip install treeval
 
 Contents
 -----------------------------
@@ -38,5 +38,5 @@ Contents
    :hidden:
    :caption: Project Links
 
-   GitHub <https://github.com/NuMindAI/Treeval>
+   GitHub <https://github.com/numindai/Treeval>
    PyPi <https://pypi.org/project/treeval/>
