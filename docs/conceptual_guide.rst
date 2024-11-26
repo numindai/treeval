@@ -71,7 +71,7 @@ Finally, lists of dictionaries are evaluated with the same alignment method, exc
 
 Treeval uses scipy's `linear_sum_assignment <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linear_sum_assignment.html>`_ method, based on the Hungarian algorithm, to compute the matching, as its `runtime is on par with the best performing implementations <https://github.com/berhane/LAP-solvers?tab=readme-ov-file#output>`_ and that the library is popular and well-maintained.
 
-Precision, Recall, F1 and mismatching tree structures
+Precision, Recall, F1 and mismatching tree branches
 -------------------------------------------------------------------
 
 When evaluating a pair of reference and hypothesis trees, they might not follow the exact same tree structure, i.e. the hypothesis may have additional nodes and branches that does not exist in the reference (false positives), and/or might miss nodes and branches present in the reference (false negatives).

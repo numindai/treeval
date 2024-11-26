@@ -22,10 +22,20 @@ if TYPE_CHECKING:
 
 # Precision/Recall/F1 are appended "tree" to avoid confusion with the same metrics being
 # computed on the leaves results. When aggregating results, this could mess up results.
-PRECISION_KEY = "precision_tree"
-RECALL_KEY = "recall_tree"
-F1_KEY = "f1_tree"
-_PRF_METRIC_NAMES = {PRECISION_KEY, RECALL_KEY, F1_KEY}
+PRECISION_NODES_KEY = "precision_nodes"
+RECALL_NODES_KEY = "recall_nodes"
+F1_NODES_KEY = "f1_nodes"
+PRECISION_NULL_KEY = "precision_null"
+RECALL_NULL_KEY = "recall_null"
+F1_NULL_KEY = "f1_null"
+_PRF_METRIC_NAMES = {
+    PRECISION_NODES_KEY,
+    RECALL_NODES_KEY,
+    F1_NODES_KEY,
+    # PRECISION_NULL_KEY,
+    # RECALL_NULL_KEY,
+    # F1_NULL_KEY,
+}
 
 
 def treeval(
@@ -284,9 +294,9 @@ def _recursive_parse(
         precision = tp / (tp + fp)
         recall = tp / (tp + fn)
 
-        results[PRECISION_KEY] = precision
-        results[RECALL_KEY] = recall
-        results[F1_KEY] = (
+        results[PRECISION_NODES_KEY] = precision
+        results[RECALL_NODES_KEY] = recall
+        results[F1_NODES_KEY] = (
             2 * (precision * recall) / (precision + recall)
             if (precision + recall) > 0
             else 0.0
