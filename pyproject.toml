@@ -42,7 +42,6 @@ dependencies = [
     "numpy",  # used for assignment problem by linear_sum_assignment method
     "scipy>=1.4.0",  # benefits from the latest linear_sum_assignment revision
     "evaluate",  # used for metrics wrappers
-    "Levenshtein",  # used for edit distance metric TODO use HF module instead
 ]
 
 [project.optional-dependencies]
@@ -52,6 +51,7 @@ tests = [
     "evaluate",  # to load metrics from HF hub
     "scikit-learn",  # F1 metric used by evaluate
     "sacrebleu",  # bleu and sacrebleu metrics used by evaluate
+    "bert_score",  # BERTScore metric used in Treeval score
     "Levenshtein",  # levenshtein distance metric
 ]
 docs = [

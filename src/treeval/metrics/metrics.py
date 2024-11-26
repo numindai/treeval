@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING
 
 import evaluate
 from evaluate import EvaluationModule
-from Levenshtein import distance
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -224,37 +223,21 @@ class RSquared(TreevalMetric):
 
 
 class Levenshtein(TreevalMetric):
-    """
-    Levenshtein distance, based on the `"Levenshtein" PyPi package <https://github.com/rapidfuzz/Levenshtein>`_.
-
-    This metric, also called "edit distance", measures the number of editions, deletions
-    and additions to perform on a string so that it becomes identical to a second one.
-    This metric returns two entries:
-
-    * ``levenshtein``: corresponds to an indel string similarity ratio normalized
-      between [0, 1]. It is equivalent to the ``Levenshtein.ratio`` method.
-    * ``edit_distance``: the actual average edit distance between the references and
-      predictions.
-    """
+    """Levenshtein distance wrapper of the Hugging Face ``numind/levenshtein`` space."""
 
     def __init__(self) -> None:
-        super().__init__(None, "levenshtein")
+        super().__init__(evaluate.load("numind/levenshtein"))
 
-    def _levenshtein_distance(
-        self,
-        predictions: Sequence[Any],
-        references: Sequence[Any],
-    ) -> dict:
-        results, ratios = [], []
-        for prediction, reference in zip(predictions, references):
-            edit_distance = distance(prediction, reference)
-            results.append(edit_distance)
-            ratios.append(edit_distance / (len(prediction) + len(reference)))
+    def get_metric_score(self, metric_result: dict) -> float:
+        """
+        Return the absolute score value of the results returned by the metric.
 
-        return {
-            self.name: 1 - sum(ratios) / len(ratios),
-            "edit_distance": sum(results) / len(results),
-        }
+        The Levenshtein ratio is used as score as already normalized.
+
+        :param metric_result: metric results as a dictionary.
+        :return: absolute metric score value as a floating point number.
+        """
+        return metric_result["levenshtein_ratio"]
 
 
 class BooleanAccuracy(TreevalMetric):

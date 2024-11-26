@@ -4,11 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-try:
-    import bert_score
-except ImportError:
-    bert_score = None
-
 from .metrics import BERTScore, BooleanAccuracy, ExactMatch, Levenshtein
 from .treeval import create_tree_metrics, treeval
 
@@ -29,9 +24,13 @@ def treeval_score(
     predictions: Sequence[dict],
     references: Sequence[dict],
     schema: dict,
-) -> dict:
+) -> float:
     """
     Treeval evaluation method.
+
+    This method is equivalent to calling :py:func:`treeval.treeval` with a tree metrics
+    built from the Treeval score types metrics, aggregating the results per metric,
+    normalizing the scores and averaging them.
 
     :param predictions: list of dictionary predictions.
     :param references: list of dictionary references.
@@ -56,13 +55,12 @@ def treeval_score(
             BooleanAccuracy(),
             ExactMatch(),
             Levenshtein(),
-            BERTScore() if bert_score else None,
+            BERTScore(),
         }
     }
 
-    # TODO average of all leaves results, or metrics averages? +update docs when decided
     # Compute treeval
-    return treeval(
+    results = treeval(
         predictions,
         references,
         schema,
@@ -71,3 +69,14 @@ def treeval_score(
         aggregate_results_per_metric=True,
         hierarchical_averaging=False,
     )
+
+    # Normalize scores and return average
+    for metric_name, metric_score in results.copy().items():
+        if metrics[metric_name].score_range != (0, 1):
+            low_bound, high_bound = metrics[metric_name].score_range
+            results[metric_name] = min(
+                max(metric_score, low_bound), high_bound
+            ) - low_bound / (high_bound - low_bound)
+        if not metrics[metric_name].higher_is_better:
+            results[metric_name] = 1 - results[metric_name]
+    return sum(results.values()) / len(results)

@@ -26,7 +26,7 @@ __tree_metrics_complete_schema = create_tree_metrics(
         "integer": ["accuracy"],
         "number": ["accuracy"],
         "datetime": ["sacrebleu"],
-        (): ["exact_match"],  # choice among list TODO doc
+        (): ["exact_match"],  # choice among list
     },
 )
 DATA_CASES = [

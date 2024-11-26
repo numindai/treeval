@@ -13,3 +13,4 @@ In an effort to standardize the evaluation of structured data extraction task, w
 * ``string``: :py:class:`treeval.metrics.Levenshtein` and :py:class:`treeval.metrics.BERTScore`. The Levenshtein distance (edit distance) measures the minimum number of deletions, additions and editions combined to perform on a prediction string until it becomes identical to a reference string. It is therefore a string similarity metric, which is represented as a normalized ratio in the Treeval score;
 
 You can directly compute the Treeval score of a batch of pairs of references/predictions using the :py:func:`treeval.treeval_score` method.
+This method require the ``Levenshtein`` package which can be installed with ``pip install Levenshtein``.
