@@ -22,10 +22,20 @@ if TYPE_CHECKING:
 
 # Precision/Recall/F1 are appended "tree" to avoid confusion with the same metrics being
 # computed on the leaves results. When aggregating results, this could mess up results.
-PRECISION_KEY = "precision_tree"
-RECALL_KEY = "recall_tree"
-F1_KEY = "f1_tree"
-_PRF_METRIC_NAMES = {PRECISION_KEY, RECALL_KEY, F1_KEY}
+PRECISION_NODES_KEY = "precision_nodes"
+RECALL_NODES_KEY = "recall_nodes"
+F1_NODES_KEY = "f1_nodes"
+PRECISION_NULL_KEY = "precision_null"
+RECALL_NULL_KEY = "recall_null"
+F1_NULL_KEY = "f1_null"
+_PRF_METRIC_NAMES = {
+    PRECISION_NODES_KEY,
+    RECALL_NODES_KEY,
+    F1_NODES_KEY,
+    # PRECISION_NULL_KEY,
+    # RECALL_NULL_KEY,
+    # F1_NULL_KEY,
+}
 
 
 def treeval(
@@ -125,7 +135,6 @@ def _recursive_parse(
     # List --> match the elements in the lists of each reference/prediction pair
     # Lists of choice do not fall in this condition as they are evaluated as single
     # leaves in the above if condition.
-    # TODO differentiate list of items and choice/classification
     # TODO handle multilabel classification
     if isinstance(predictions[0], list):
         # mean of aligned element match scores
@@ -278,7 +287,6 @@ def _recursive_parse(
 
     # Compute the precision, recall and f1 scores of the predicted nodes
     # TODO ratio of null (fp/fn)
-    # TODO calibration?
     if root_node:
         # tp + fn should be equal to len(references) * count_dictionary_nodes(schema)
         total_num_nodes, tp, fn = pr_cache
@@ -286,9 +294,9 @@ def _recursive_parse(
         precision = tp / (tp + fp)
         recall = tp / (tp + fn)
 
-        results[PRECISION_KEY] = precision
-        results[RECALL_KEY] = recall
-        results[F1_KEY] = (
+        results[PRECISION_NODES_KEY] = precision
+        results[RECALL_NODES_KEY] = recall
+        results[F1_NODES_KEY] = (
             2 * (precision * recall) / (precision + recall)
             if (precision + recall) > 0
             else 0.0
@@ -299,8 +307,8 @@ def _recursive_parse(
 
 def create_tree_metrics(
     schema: dict,
-    leaves_metrics: dict,
-    types_metrics: dict[str, Sequence[str]],
+    leaves_metrics: dict | None = None,
+    types_metrics: dict[str | tuple, Sequence[str]] | None = None,
     exclusive_leaves_types_metrics: bool = False,
 ) -> dict:
     """
@@ -312,8 +320,11 @@ def create_tree_metrics(
     :param schema: structure of the tree as a dictionary specifying each leaf type.
     :param leaves_metrics: dictionary with the same tree structure as the provided
         ``schema`` specifying the metrics to compute for specific leaves.
+        (default: ``None``)
     :param types_metrics: dictionary mapping the types specified in the provided
-        ``schema`` to the metrics to compute for the leaves of these types.
+        ``schema`` to the metrics to compute for the leaves of these types. All types
+        names must be strings, except the empty tuple ``()`` which is used for choice
+        lists. (default: ``None``)
     :param exclusive_leaves_types_metrics: an option allowing to make the metrics
         specified in ``leaves_metrics`` to be exclusive to certain leaves, excluding the
         metrics that should cover them specified in the ``types_metrics`` argument.
@@ -327,9 +338,18 @@ def create_tree_metrics(
     :return: tree identical to ``schema`` where leaf values reference to the **set** of
         names of metrics to use to evaluate them.
     """
+    # Safety check
+    if not leaves_metrics:
+        leaves_metrics = {}
+    if not types_metrics:
+        types_metrics = {}
+
     tree_metrics = {}
     for node_name, node_type in schema.items():
-        node_type_tmp = node_type[0] if isinstance(node_type, list) else node_type
+        if isinstance(node_type, list):
+            node_type_tmp = node_type[0] if len(node_type) == 1 else ()  # else choice
+        else:
+            node_type_tmp = node_type
         if isinstance(node_type_tmp, dict):
             tree_metrics[node_name] = create_tree_metrics(
                 node_type_tmp,

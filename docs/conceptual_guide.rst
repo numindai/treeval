@@ -70,3 +70,21 @@ Treeval computes the metrics scores on all the possible combinations of pairs of
 Finally, lists of dictionaries are evaluated with the same alignment method, except that **pairs of dictionaries are evaluated recursively** and that the leaves metrics scores are aggregated per metric before the normalization step.
 
 Treeval uses scipy's `linear_sum_assignment <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linear_sum_assignment.html>`_ method, based on the Hungarian algorithm, to compute the matching, as its `runtime is on par with the best performing implementations <https://github.com/berhane/LAP-solvers?tab=readme-ov-file#output>`_ and that the library is popular and well-maintained.
+
+Precision, Recall, F1 and mismatching tree branches
+-------------------------------------------------------------------
+
+When evaluating a pair of reference and hypothesis trees, they might not follow the exact same tree structure, i.e. the hypothesis may have additional nodes and branches that does not exist in the reference (false positives), and/or might miss nodes and branches present in the reference (false negatives).
+Additionally some leaves types might be "Null" (Python ``None``) marking an explicit absence of value. All the metrics cannot reliably evaluates cases where one or both values are "Null", or simply absent from the tree, thus computing scores for these cases is tricky. Assigning a "default" penalizing value is another option, that might however "corrupt" the final average metrics scores depending on the proportion of such cases, making difficult to interpret the results and report the performances on the actual "correct" nodes.
+
+For these reasons, **Treeval only computes metrics scores on the pairs of leaves that are both present in the reference and hypothesis**, and **report separately precision, recall and f1 scores at the tree-level of the present of the nodes and null values**. These results are mapped in the the output :py:func:`treeval.treeval` method by the ``precision_nodes``, ``recall_nodes``, ``f1_nodes``, ``precision_null``, ``recall_null`` and ``f1_null`` keys. The figure below gives a visual representation of how these cases are identified to compute the precision and recall scores.
+
+.. figure:: resources/prf_null.svg
+   :scale: 60 %
+   :alt: Precision, Recall, F1 and null schema
+   :align: center
+
+   Figure illustrating mismatches between evaluated trees, the blue one being the reference and the green one the hypothesis. The total number of reference nodes is 7, the root node not being counted. The hypothesis tree possesses 6 nodes following the same structure, that could be programmatically interpreted as having the same dictionary keys, and two additional nodes that does not exist in the reference tree. This results in a ``5/6 = 0.833`` node precision and ``5/7 = 0.714`` node recall.
+   The hypothesis tree possesses one correctly predicted ``Null`` node, and one missed (considered as false negative), resulting in a ``1/1 = 1.0`` null precision and ``1/2 = 0.5`` null recall.
+
+The F1 scores are computed from the precision and recall values following the formula: ``f1 = 2 * precision * recall / (precision + recall)``.

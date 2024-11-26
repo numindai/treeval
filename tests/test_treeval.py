@@ -19,7 +19,6 @@ __tree_metrics_complete_schema = create_tree_metrics(
         "n5": ["accuracy"],
         "n7": ["sacrebleu"],
         "n8": {"n82": ["sacrebleu"]},
-        "n9": ["sacrebleu"],
         "n10": {"n10_int": ["accuracy"], "n10_string": ["sacrebleu"]},
     },
     {
@@ -27,6 +26,7 @@ __tree_metrics_complete_schema = create_tree_metrics(
         "integer": ["accuracy"],
         "number": ["accuracy"],
         "datetime": ["sacrebleu"],
+        (): ["exact_match"],  # choice among list
     },
 )
 DATA_CASES = [
@@ -69,9 +69,9 @@ DATA_CASES = [
                 }
             },
             "n3": {"mse": {"mse": 0.25}},
-            "precision_tree": 0.9166666666666666,
-            "recall_tree": 0.9166666666666666,
-            "f1_tree": 0.9166666666666666,
+            "precision_nodes": 0.9166666666666666,
+            "recall_nodes": 0.9166666666666666,
+            "f1_nodes": 0.9166666666666666,
         },
     ),
     (
@@ -189,21 +189,11 @@ DATA_CASES = [
                     }
                 },
             },
-            "n9": {
-                "sacrebleu": {
-                    "score": 0.0,
-                    "counts": [1, 0, 0, 0],
-                    "totals": [1, 0, 0, 0],
-                    "precisions": [100.0, 0.0, 0.0, 0.0],
-                    "bp": 1.0,
-                    "sys_len": 1,
-                    "ref_len": 1,
-                }
-            },
+            "n9": {"exact_match": {"exact_match": 1.0}},
             "n10": {"accuracy": {"accuracy": 0.5}, "sacrebleu": {"sacrebleu": 0.0}},
-            "precision_tree": 1.0,
-            "recall_tree": 1.0,
-            "f1_tree": 1.0,
+            "precision_nodes": 1.0,
+            "recall_nodes": 1.0,
+            "f1_nodes": 1.0,
         },
     ),
 ]
@@ -288,6 +278,6 @@ def test_treeval_precision_recall_f1(data: tuple) -> None:
     """
     schema, reference, prediction, tree_metrics, expected_scores = data
     results = treeval(prediction, reference, schema, METRICS, tree_metrics)
-    assert results["precision_tree"] == pytest.approx(expected_scores[0])
-    assert results["recall_tree"] == pytest.approx(expected_scores[1])
-    assert results["f1_tree"] == pytest.approx(expected_scores[2])
+    assert results["precision_nodes"] == pytest.approx(expected_scores[0])
+    assert results["recall_nodes"] == pytest.approx(expected_scores[1])
+    assert results["f1_nodes"] == pytest.approx(expected_scores[2])

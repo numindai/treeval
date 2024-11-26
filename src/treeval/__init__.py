@@ -13,7 +13,9 @@ In a nutshell
   :py:func:`treeval.aggregate_results_per_leaf_type` aggregates the tree results of
   :py:func:`treeval.treeval` per metric and/or leaf type;
 * :py:func:`treeval.load_json_files` is a useful method loading a list of JSON files and
-  decoding them into dictionaries.
+  decoding them into dictionaries;
+* :py:func:`treeval.treeval_score` computes :ref:`The Treeval score` from the predefined
+  metrics per type, useful to evaluate structured data extraction tasks.
 
 Methods
 -------
@@ -31,6 +33,7 @@ from .treeval import (
     create_tree_metrics,
     treeval,
 )
+from .treeval_score import treeval_score
 from .utils import load_json_files
 
 __all__ = [
@@ -38,5 +41,6 @@ __all__ = [
     "aggregate_results_per_metric",
     "create_tree_metrics",
     "treeval",
+    "treeval_score",
     "load_json_files",
 ]
