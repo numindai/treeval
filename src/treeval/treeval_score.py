@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .metrics import BERTScore, BooleanAccuracy, ExactMatch, Levenshtein
-from .treeval import create_tree_metrics, treeval
+from .treeval import (
+    _PRF_METRIC_NAMES,
+    F1_NODES_KEY,
+    F1_NULL_KEY,
+    create_tree_metrics,
+    treeval,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -24,9 +30,11 @@ def treeval_score(
     predictions: Sequence[dict],
     references: Sequence[dict],
     schema: dict,
-) -> float:
+) -> dict:
     """
     Treeval evaluation method.
+
+    TODO doc how to compute treeval score (avg of leaf/metrics scores + node/null f1)
 
     This method is equivalent to calling :py:func:`treeval.treeval` with a tree metrics
     built from the Treeval score types metrics, aggregating the results per metric,
@@ -38,10 +46,8 @@ def treeval_score(
         references must all follow this exact tree structure, while the predictions can
         have mismatching branches which will impact the tree precision/recall/f1 scores
         returned by the method.
-    :return: the metrics results. The returned dictionary will have the same tree
-        structure as the provided ``schema`` if ``aggregate_results_per_metric`` or
-        ``aggregate_results_per_leaf_type`` are disabled, otherwise it will map metrics
-        and/or leaf types to average results over all leaves.
+    :return: the treeval score results, a dictionary with the ``treeval_score`` entry
+        and node/null precision/recall/f1 scores.
     """
     # Create tree metrics
     tree_metrics = create_tree_metrics(schema, types_metrics=TYPES_METRICS)
@@ -66,12 +72,16 @@ def treeval_score(
         schema,
         metrics,
         tree_metrics,
-        aggregate_results_per_metric=True,
+        aggregate_results_per_metric=True,  # TODO average of leaves instead?
         hierarchical_averaging=False,
     )
+    final_results = {key: results[key] for key in _PRF_METRIC_NAMES}
 
-    # Normalize scores and return average
+    # Normalize metrics scores and computes treeval score
+    scores = []
     for metric_name, metric_score in results.copy().items():
+        if metric_name in _PRF_METRIC_NAMES:
+            continue
         if metrics[metric_name].score_range != (0, 1):
             low_bound, high_bound = metrics[metric_name].score_range
             results[metric_name] = min(
@@ -79,4 +89,9 @@ def treeval_score(
             ) - low_bound / (high_bound - low_bound)
         if not metrics[metric_name].higher_is_better:
             results[metric_name] = 1 - results[metric_name]
-    return sum(results.values()) / len(results)
+        scores.append(results[metric_name])
+    final_results["treeval_score"] = (
+        sum(sum(scores) / len(scores) + results[F1_NODES_KEY], results[F1_NULL_KEY]) / 3
+    )
+
+    return final_results

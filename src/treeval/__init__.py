@@ -7,7 +7,7 @@ In a nutshell
 * :py:func:`treeval.treeval` is the treeval method computing metrics over a batch of
   pairs of references and predictions;
 * :py:func:`treeval.create_tree_metrics` provides an easy way to create a
-  ``tree_metrics``, to be used with py:func:`treeval.treeval`, from mappings of leaf
+  ``tree_metrics``, to be used with py:func:`treeval.treeval` , from mappings of leaf
   types and metrics names;
 * :py:func:`treeval.aggregate_results_per_metric` and
   :py:func:`treeval.aggregate_results_per_leaf_type` aggregates the tree results of

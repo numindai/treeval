@@ -32,9 +32,9 @@ _PRF_METRIC_NAMES = {
     PRECISION_NODES_KEY,
     RECALL_NODES_KEY,
     F1_NODES_KEY,
-    # PRECISION_NULL_KEY,
-    # RECALL_NULL_KEY,
-    # F1_NULL_KEY,
+    PRECISION_NULL_KEY,
+    RECALL_NULL_KEY,
+    F1_NULL_KEY,
 }
 
 
@@ -256,7 +256,7 @@ def _recursive_parse(
     root_node = False
     if pr_cache is None:  # root node
         root_node = True
-        pr_cache = [0, 0, 0]  # counts TT/TP/FN
+        pr_cache = [0] * 6  # counts TT/TP/FN (nodes) + TN/FN/FP (null)
     # Counts the total number of nodes (at current branch/depth) before parsing the
     # tree batching all preds/refs
     pr_cache[0] += sum(len(pred) for pred in predictions)
@@ -265,9 +265,19 @@ def _recursive_parse(
         node_predictions, node_references = [], []
         for pred, ref in zip(predictions, references):
             if node_name in pred:
-                node_predictions.append(pred[node_name])
-                node_references.append(ref[node_name])  # must be in ref
-                pr_cache[1] += 1
+                pred_leaf_val = pred[node_name]
+                ref_leaf_val = ref[node_name]
+                if pred_leaf_val is not None and ref_leaf_val is not None:
+                    node_predictions.append(pred_leaf_val)
+                    node_references.append(ref_leaf_val)  # must always be in ref
+                elif pred_leaf_val is None and ref_leaf_val is None:
+                    pr_cache[3] += 1  # increments null TN count
+                elif pred_leaf_val is None and ref_leaf_val is not None:
+                    pr_cache[4] += 1  # increments null FN count
+                elif pred_leaf_val is not None and ref_leaf_val is None:
+                    pr_cache[5] += 1  # increments null FP count
+
+                pr_cache[1] += 1  # increments nodes TP count
             else:  # false_negative += total number of children nodes + 1 (current node)
                 pr_cache[2] += (
                     count_dictionary_nodes(node_type) + 1
@@ -284,25 +294,43 @@ def _recursive_parse(
                 tree_metrics[node_name],
                 pr_cache,
             )
+        else:
+            results[node_name] = None
+            # TODO otherwise None? --> handle None cases + docs
 
-    # Compute the precision, recall and f1 scores of the predicted nodes
-    # TODO ratio of null (fp/fn)
+    # Compute the precision, recall and f1 scores of the predicted nodes/null
     if root_node:
         # tp + fn should be equal to len(references) * count_dictionary_nodes(schema)
-        total_num_nodes, tp, fn = pr_cache
-        fp = total_num_nodes - tp
-        precision = tp / (tp + fp)
-        recall = tp / (tp + fn)
+        # there is no tn for nodes, for null yes (`None` leaf values in references)
+        total_num_nodes, tp_nodes, fn_nodes, tn_null, fn_null, fp_null = pr_cache
 
-        results[PRECISION_NODES_KEY] = precision
-        results[RECALL_NODES_KEY] = recall
-        results[F1_NODES_KEY] = (
-            2 * (precision * recall) / (precision + recall)
-            if (precision + recall) > 0
-            else 0.0
-        )
+        # Add node precision/recall/f1 scores to the results
+        fp_nodes = total_num_nodes - tp_nodes  # predicted nodes not in references
+        precision_nodes = tp_nodes / (tp_nodes + fp_nodes)
+        recall_nodes = tp_nodes / (tp_nodes + fn_nodes)
+        results[PRECISION_NODES_KEY] = precision_nodes
+        results[RECALL_NODES_KEY] = recall_nodes
+        results[F1_NODES_KEY] = __compute_f1(precision_nodes, recall_nodes)
+
+        # Add null precision/recall/f1 scores to the results
+        # cases where no None at all --> 1 scores
+        # tp_nodes = tn_null + tp_null + fn_null + fp_null
+        tp_null = tp_nodes - tn_null - fn_null - fp_null
+        precision_null = tp_null / (tp_null + fp_null) if tp_null + fp_null > 0 else 1
+        recall_null = tp_null / (tp_null + fn_null) if tp_null + fn_null > 0 else 1
+        results[PRECISION_NULL_KEY] = precision_null
+        results[RECALL_NULL_KEY] = recall_null
+        results[F1_NULL_KEY] = __compute_f1(precision_null, recall_null)
 
     return results
+
+
+def __compute_f1(precision: float, recall: float) -> float:
+    return (
+        2 * (precision * recall) / (precision + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
 
 
 def create_tree_metrics(

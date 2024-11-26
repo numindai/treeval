@@ -88,3 +88,9 @@ For these reasons, **Treeval only computes metrics scores on the pairs of leaves
    The hypothesis tree possesses one correctly predicted ``Null`` node, and one missed (considered as false negative), resulting in a ``1/1 = 1.0`` null precision and ``1/2 = 0.5`` null recall.
 
 The F1 scores are computed from the precision and recall values following the formula: ``f1 = 2 * precision * recall / (precision + recall)``.
+
+Separating these results allows an easier interpretability and makes sure that:
+
+* **metrics results** represents the performances on the leaves that are actually present/well predicted in the hypothesis trees only;
+* **nodes precision/recall/f1** represents the tree structure similarity, which must be validated first before analyzing metrics results;
+* **null precision/recall/f1** represents the similarity of the presence or absence of result ("Null") in the leaves values.

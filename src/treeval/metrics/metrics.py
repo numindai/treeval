@@ -37,8 +37,12 @@ class TreevalMetric:
         ``tree_metrics`` argument of the :py:func:`treeval.treeval` method.
         If you provided an ``evaluate.EvaluationModule`` ``module``, this argument is
         optional and the name of the module will be used instead.
-    :param score_range:
-    :param higher_is_better:
+    :param score_range: range of the metric score values as a tuple. This information is
+        required to normalize metric scores. (default: ``(0, 1)``)
+    :param higher_is_better: direction of the metric. This information is required to
+        normalize metric scores. (default: ``False``)
+    :param kwargs: any keyword argument that should be passed to the ``module`` when
+        called to compute metric scores.
     """
 
     def __init__(
@@ -47,6 +51,7 @@ class TreevalMetric:
         name: str | None = None,
         score_range: tuple[float | int, float | int] = (0, 1),
         higher_is_better: bool = True,
+        **kwargs,
     ) -> None:
         self._module = module
         self._is_hf_module = isinstance(self._module, EvaluationModule)
@@ -59,6 +64,7 @@ class TreevalMetric:
             self.name = name
         self.score_range = score_range
         self.higher_is_better = higher_is_better
+        self._kwargs = kwargs
 
     def compute(
         self,
@@ -68,9 +74,10 @@ class TreevalMetric:
         """
         Compute the metric score between pairs of references and predictions.
 
-        This method does not take any keyword arguments. If you need to provide
-        additional arguments to the module, we recommend to modify the implementation of
-        the module to handle this case.
+        This method does not take any keyword arguments. Keyword arguments can be passed
+        to the module by providing them at the :py:class:`treeval.metrics.TreevalMetric`
+        object initialization. This can also be achieved by subclassing this class and
+        overriding this method.
 
         :param predictions: list of predictions to evaluate.
         :param references: expected reference values.
@@ -80,8 +87,12 @@ class TreevalMetric:
             metric.
         """
         if self._is_hf_module:
-            return self._module.compute(predictions=predictions, references=references)
-        return self._module(predictions=predictions, references=references)
+            return self._module.compute(
+                predictions=predictions, references=references, **self._kwargs
+            )
+        return self._module(
+            predictions=predictions, references=references, **self._kwargs
+        )
 
     def __call__(
         self,
@@ -127,106 +138,106 @@ class TreevalMetric:
 class BLEU(TreevalMetric):
     """BLEU, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("bleu"), score_range=(0, 100))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("bleu"), score_range=(0, 100), **kwargs)
 
 
 class SacreBLEU(TreevalMetric):
     """SacreBLEU, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("sacrebleu"), score_range=(0, 100))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("sacrebleu"), score_range=(0, 100), **kwargs)
 
 
 class ROUGE(TreevalMetric):
     """ROUGE, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("rouge"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("rouge"), **kwargs)
 
 
 class MAUVE(TreevalMetric):
     """MAUVE, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("mauve"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("mauve"), **kwargs)
 
 
 class METEOR(TreevalMetric):
     """METEOR, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("meteor"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("meteor"), **kwargs)
 
 
 class Accuracy(TreevalMetric):
     """Precision, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("accuracy"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("accuracy"), **kwargs)
 
 
 class Precision(TreevalMetric):
     """Precision, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("precision"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("precision"), **kwargs)
 
 
 class Recall(TreevalMetric):
     """Recall, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("recall"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("recall"), **kwargs)
 
 
 class F1(TreevalMetric):
     """F1, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("f1"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("f1"), **kwargs)
 
 
 class MSE(TreevalMetric):
     """MSE, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("mse"), higher_is_better=False)
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("mse"), higher_is_better=False, **kwargs)
 
 
 class ExactMatch(TreevalMetric):
     """Exact match, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("exact_match"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("exact_match"), **kwargs)
 
 
 class BERTScore(TreevalMetric):
     """BERTScore, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("bertscore"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("bertscore"), **kwargs)
 
 
 class Perplexity(TreevalMetric):
     """Perplexity, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("perplexity"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("perplexity"), **kwargs)
 
 
 class RSquared(TreevalMetric):
     """RSquared, wrapper of the Hugging Face evaluation module."""
 
-    def __init__(self) -> None:
+    def __init__(self) -> None:  # module doesn't take kwargs
         super().__init__(evaluate.load("r_squared"))
 
 
 class Levenshtein(TreevalMetric):
     """Levenshtein distance wrapper of the Hugging Face ``numind/levenshtein`` space."""
 
-    def __init__(self) -> None:
-        super().__init__(evaluate.load("numind/levenshtein"))
+    def __init__(self, **kwargs) -> None:
+        super().__init__(evaluate.load("numind/levenshtein"), **kwargs)
 
     def get_metric_score(self, metric_result: dict) -> float:
         """
