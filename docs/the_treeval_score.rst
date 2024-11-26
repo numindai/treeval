@@ -14,3 +14,21 @@ In an effort to standardize the evaluation of structured data extraction task, w
 
 You can directly compute the Treeval score of a batch of pairs of references/predictions using the :py:func:`treeval.treeval_score` method.
 This method require the ``Levenshtein`` package which can be installed with ``pip install Levenshtein``.
+
+Example
+-------
+
+..  code-block:: python
+
+    tree_schema = {
+        "song_name": "string",  # node name/key are dictionary keys, node types are dictionary values.
+        "artist_name": "string",  # if a node value is anything other than a dictionary, it is a leaf.
+        "song_duration_in_seconds": "integer",
+        "has_lyrics": "boolean",
+        "information": {  # a node value can be a nested dictionary, i.e. a branch
+            "tempo": "integer",
+            "time_signature": ["4/4", "4/2", "2/2"],  # one of the element within the list
+            "key_signature": "string",
+        },
+        "instruments": ["string"],  # list of items of type "string"
+    }

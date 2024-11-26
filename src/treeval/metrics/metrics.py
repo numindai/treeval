@@ -234,10 +234,10 @@ class RSquared(TreevalMetric):
 
 
 class Levenshtein(TreevalMetric):
-    """Levenshtein distance wrapper of the Hugging Face ``numind/levenshtein`` space."""
+    """Levenshtein distance wrapper of the Hugging Face ``Natooz/levenshtein`` space."""
 
     def __init__(self, **kwargs) -> None:
-        super().__init__(evaluate.load("numind/levenshtein"), **kwargs)
+        super().__init__(evaluate.load("Natooz/levenshtein"), **kwargs)
 
     def get_metric_score(self, metric_result: dict) -> float:
         """

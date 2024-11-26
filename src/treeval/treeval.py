@@ -20,21 +20,22 @@ if TYPE_CHECKING:
     from .metrics import TreevalMetric
 
 
-# Precision/Recall/F1 are appended "tree" to avoid confusion with the same metrics being
-# computed on the leaves results. When aggregating results, this could mess up results.
-PRECISION_NODES_KEY = "precision_nodes"
-RECALL_NODES_KEY = "recall_nodes"
-F1_NODES_KEY = "f1_nodes"
-PRECISION_NULL_KEY = "precision_null"
-RECALL_NULL_KEY = "recall_null"
-F1_NULL_KEY = "f1_null"
+# Precision/Recall/F1 are appended "nodes"/"leaves" to avoid confusion with the same
+# metrics being computed on the leaves results. When aggregating results, this could
+# mess up results.
+PRECISION_NODE_KEY = "precision_node"
+RECALL_NODE_KEY = "recall_node"
+F1_NODE_KEY = "f1_node"
+PRECISION_LEAF_KEY = "precision_leaf"
+RECALL_LEAF_KEY = "recall_leaf"
+F1_LEAF_KEY = "f1_leaf"
 _PRF_METRIC_NAMES = {
-    PRECISION_NODES_KEY,
-    RECALL_NODES_KEY,
-    F1_NODES_KEY,
-    PRECISION_NULL_KEY,
-    RECALL_NULL_KEY,
-    F1_NULL_KEY,
+    PRECISION_NODE_KEY,
+    RECALL_NODE_KEY,
+    F1_NODE_KEY,
+    PRECISION_LEAF_KEY,
+    RECALL_LEAF_KEY,
+    F1_LEAF_KEY,
 }
 
 
@@ -191,7 +192,7 @@ def _recursive_parse(
                         schema[0],  # provides either a type or a dict (list of dicts)
                         metrics,
                         tree_metrics,  # already list of metric names
-                        [0, 0, 0],  # mocking the pr_cache so that it doesn't return
+                        [0] * 6,  # mocking the pr_cache so that it doesn't return
                     )  # the precision/recall/scores in the score dictionary (dicts).
                     # If the items are dictionaries, we aggregate the tree results per
                     # metric to be able to assign pairs of references/predictions.
@@ -256,34 +257,61 @@ def _recursive_parse(
     root_node = False
     if pr_cache is None:  # root node
         root_node = True
-        pr_cache = [0] * 6  # counts TT/TP/FN (nodes) + TN/FN/FP (null)
+        pr_cache = [0] * 6  # counts TT/TP/FN (nodes) + TP/FN/FP (leaf)
     # Counts the total number of nodes (at current branch/depth) before parsing the
     # tree batching all preds/refs
     pr_cache[0] += sum(len(pred) for pred in predictions)
     for node_name, node_type in schema.items():
         # Gathers pairs of refs/preds that are both present.
+        # Count precision/recall scores on nodes/leaves
         node_predictions, node_references = [], []
         for pred, ref in zip(predictions, references):
+            # Node is in both
             if node_name in pred:
                 pred_leaf_val = pred[node_name]
                 ref_leaf_val = ref[node_name]
+
+                # TP: leaf in both ref and pred
                 if pred_leaf_val is not None and ref_leaf_val is not None:
                     node_predictions.append(pred_leaf_val)
                     node_references.append(ref_leaf_val)  # must always be in ref
-                elif pred_leaf_val is None and ref_leaf_val is None:
-                    pr_cache[3] += 1  # increments null TN count
+                    if not isinstance(node_type, dict):
+                        pr_cache[3] += 1  # increments leaf TP count
+
+                # FN: leaf in ref missing from pred
+                # leaf prf are only computed on leaves, excluding intermediates nodes
                 elif pred_leaf_val is None and ref_leaf_val is not None:
-                    pr_cache[4] += 1  # increments null FN count
+                    pr_cache[4] += (
+                        count_dictionary_nodes(node_type, only_leaves=True)
+                        if isinstance(node_type, dict)
+                        else 1
+                    )
+                    if isinstance(node_type, dict):
+                        pr_cache[2] += count_dictionary_nodes(node_type)  # node FN
+
+                # FP: leaf in pred not present in ref (unexpected)
                 elif pred_leaf_val is not None and ref_leaf_val is None:
-                    pr_cache[5] += 1  # increments null FP count
+                    if isinstance(pred_leaf_val, dict):
+                        pr_cache[5] += count_dictionary_nodes(
+                            pred_leaf_val, only_leaves=True
+                        )
+                        pr_cache[0] += count_dictionary_nodes(
+                            pred_leaf_val
+                        )  # total nodes
+                    else:
+                        pr_cache[5] += 1
 
                 pr_cache[1] += 1  # increments nodes TP count
-            else:  # false_negative += total number of children nodes + 1 (current node)
+
+            # node false negative += total number of children nodes + 1 (current node)
+            else:
                 pr_cache[2] += (
                     count_dictionary_nodes(node_type) + 1
                     if isinstance(node_type, dict)
                     else 1
                 )
+                if isinstance(node_type, dict):
+                    pr_cache[4] += count_dictionary_nodes(node_type, only_leaves=True)
 
         if len(node_predictions) > 0:
             results[node_name] = _recursive_parse(
@@ -298,29 +326,28 @@ def _recursive_parse(
             results[node_name] = None
             # TODO otherwise None? --> handle None cases + docs
 
-    # Compute the precision, recall and f1 scores of the predicted nodes/null
+    # Compute the precision, recall and f1 scores of the predicted nodes/leaves
     if root_node:
         # tp + fn should be equal to len(references) * count_dictionary_nodes(schema)
-        # there is no tn for nodes, for null yes (`None` leaf values in references)
-        total_num_nodes, tp_nodes, fn_nodes, tn_null, fn_null, fp_null = pr_cache
+        # there is no tn for nodes, for leaves yes (`None` leaf values in references)
+        total_num_nodes, tp_node, fn_node, tp_leaf, fn_leaf, fp_leaf = pr_cache
 
         # Add node precision/recall/f1 scores to the results
-        fp_nodes = total_num_nodes - tp_nodes  # predicted nodes not in references
-        precision_nodes = tp_nodes / (tp_nodes + fp_nodes)
-        recall_nodes = tp_nodes / (tp_nodes + fn_nodes)
-        results[PRECISION_NODES_KEY] = precision_nodes
-        results[RECALL_NODES_KEY] = recall_nodes
-        results[F1_NODES_KEY] = __compute_f1(precision_nodes, recall_nodes)
+        fp_node = total_num_nodes - tp_node  # predicted nodes not in references
+        precision_node = tp_node / (tp_node + fp_node)
+        recall_node = tp_node / (tp_node + fn_node)
+        results[PRECISION_NODE_KEY] = precision_node
+        results[RECALL_NODE_KEY] = recall_node
+        results[F1_NODE_KEY] = __compute_f1(precision_node, recall_node)
 
-        # Add null precision/recall/f1 scores to the results
+        # Add leaf precision/recall/f1 scores to the results
         # cases where no None at all --> 1 scores
-        # tp_nodes = tn_null + tp_null + fn_null + fp_null
-        tp_null = tp_nodes - tn_null - fn_null - fp_null
-        precision_null = tp_null / (tp_null + fp_null) if tp_null + fp_null > 0 else 1
-        recall_null = tp_null / (tp_null + fn_null) if tp_null + fn_null > 0 else 1
-        results[PRECISION_NULL_KEY] = precision_null
-        results[RECALL_NULL_KEY] = recall_null
-        results[F1_NULL_KEY] = __compute_f1(precision_null, recall_null)
+        # num_leaves = tn_leaf + tp_leaf + fn_leaf + fp_leaf
+        precision_leaf = tp_leaf / (tp_leaf + fp_leaf) if tp_leaf + fp_leaf > 0 else 1
+        recall_leaf = tp_leaf / (tp_leaf + fn_leaf) if tp_leaf + fn_leaf > 0 else 1
+        results[PRECISION_LEAF_KEY] = precision_leaf
+        results[RECALL_LEAF_KEY] = recall_leaf
+        results[F1_LEAF_KEY] = __compute_f1(precision_leaf, recall_leaf)
 
     return results
 

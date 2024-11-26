@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import pytest
 from treeval import aggregate_results_per_leaf_type, aggregate_results_per_metric
-from treeval.treeval import _PRF_METRIC_NAMES
+from treeval.treeval import (
+    _PRF_METRIC_NAMES,
+    F1_LEAF_KEY,
+    F1_NODE_KEY,
+    PRECISION_LEAF_KEY,
+    PRECISION_NODE_KEY,
+    RECALL_LEAF_KEY,
+    RECALL_NODE_KEY,
+)
 
 from tests.utils_tests import METRICS
 
@@ -25,12 +33,12 @@ RESULTS_CASES = [
                 "n4": {"accuracy": {"score": 1}, "mse": {"mse": 0}},
                 "n5": {"bleu": {"bleu": 1}, "mse": {"mse": 0}},
             },
-            "precision_nodes": 1,
-            "recall_nodes": 1,
-            "f1_nodes": 1,
-            "precision_null": 1,
-            "recall_null": 1,
-            "f1_null": 1,
+            PRECISION_NODE_KEY: 1,
+            RECALL_NODE_KEY: 1,
+            F1_NODE_KEY: 1,
+            PRECISION_LEAF_KEY: 1,
+            RECALL_LEAF_KEY: 1,
+            F1_LEAF_KEY: 1,
         },
         {"accuracy": 1, "mse": 0, "bleu": 1},
         {"integer": {"accuracy": 1, "mse": 0}, "string": {"bleu": 1, "mse": 0}},
@@ -44,12 +52,12 @@ RESULTS_CASES = [
                 "n4": {"accuracy": {"score": 1}, "mse": {"mse": 0}},
                 "n5": {"bleu": {"bleu": 1}, "mse": {"mse": 1}},
             },
-            "precision_nodes": 1,
-            "recall_nodes": 1,
-            "f1_nodes": 1,
-            "precision_null": 1,
-            "recall_null": 1,
-            "f1_null": 1,
+            PRECISION_NODE_KEY: 1,
+            RECALL_NODE_KEY: 1,
+            F1_NODE_KEY: 1,
+            PRECISION_LEAF_KEY: 1,
+            RECALL_LEAF_KEY: 1,
+            F1_LEAF_KEY: 1,
         },
         {"accuracy": 0.5, "mse": 0.25, "bleu": 1},
         {"integer": {"accuracy": 0.5, "mse": 0}, "string": {"bleu": 1, "mse": 1}},

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from .metrics import BERTScore, BooleanAccuracy, ExactMatch, Levenshtein
 from .treeval import (
     _PRF_METRIC_NAMES,
-    F1_NODES_KEY,
-    F1_NULL_KEY,
+    F1_LEAF_KEY,
+    F1_NODE_KEY,
     create_tree_metrics,
     treeval,
 )
@@ -34,7 +34,7 @@ def treeval_score(
     """
     Treeval evaluation method.
 
-    TODO doc how to compute treeval score (avg of leaf/metrics scores + node/null f1)
+    TODO doc how to compute treeval score (avg of leaf/metrics scores + node/leaf f1)
 
     This method is equivalent to calling :py:func:`treeval.treeval` with a tree metrics
     built from the Treeval score types metrics, aggregating the results per metric,
@@ -47,7 +47,7 @@ def treeval_score(
         have mismatching branches which will impact the tree precision/recall/f1 scores
         returned by the method.
     :return: the treeval score results, a dictionary with the ``treeval_score`` entry
-        and node/null precision/recall/f1 scores.
+        and node/leaf precision/recall/f1 scores.
     """
     # Create tree metrics
     tree_metrics = create_tree_metrics(schema, types_metrics=TYPES_METRICS)
@@ -72,7 +72,7 @@ def treeval_score(
         schema,
         metrics,
         tree_metrics,
-        aggregate_results_per_metric=True,  # TODO average of leaves instead?
+        aggregate_results_per_metric=True,
         hierarchical_averaging=False,
     )
     final_results = {key: results[key] for key in _PRF_METRIC_NAMES}
@@ -91,7 +91,7 @@ def treeval_score(
             results[metric_name] = 1 - results[metric_name]
         scores.append(results[metric_name])
     final_results["treeval_score"] = (
-        sum(sum(scores) / len(scores) + results[F1_NODES_KEY], results[F1_NULL_KEY]) / 3
+        sum(sum(scores) / len(scores) + results[F1_NODE_KEY], results[F1_LEAF_KEY]) / 3
     )
 
     return final_results
