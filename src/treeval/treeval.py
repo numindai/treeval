@@ -498,7 +498,7 @@ def _aggregate_results_per_metric(
     # method. Otherwise, it returned the list of all scores that we need to average.
     if not hierarchical_averaging:
         metrics_results = {
-            metric_name: sum(scores) / len(scores)
+            metric_name: sum(scores) / len(scores) if scores is not None else None
             for metric_name, scores in metrics_results.items()
         }
 
@@ -523,6 +523,7 @@ def __aggregate_results_per_metric(
 
     # Gather scores per metric name
     metrics_results = {}  # {metric_name: [results]}
+    metrics_none = set()
     for node_name, value in tree_metrics.items():
         results_node = results[node_name]
         if isinstance(value, dict):
@@ -534,22 +535,31 @@ def __aggregate_results_per_metric(
                 metrics,
                 hierarchical_averaging=hierarchical_averaging,
             )
-            for key_branch in branch_results:
-                if key_branch not in metrics_results:
-                    metrics_results[key_branch] = []
+            for branch_key, branch_value in branch_results.items():
+                if branch_value is None:
+                    metrics_none.add(branch_key)
+                elif branch_key not in metrics_results:
+                    metrics_results[branch_key] = []
             metrics_results = merge_dicts(metrics_results, branch_results)
-        else:
+        elif results_node is not None:
             for metric_name, metric_results in results_node.items():
                 if metric_name not in metrics_results:
                     metrics_results[metric_name] = []
                 metrics_results[metric_name].append(
                     metrics[metric_name].get_metric_score(metric_results)
                 )
+        else:
+            metrics_none |= tree_metrics[node_name]
+
+    # Insert `None` entries for metrics of node results that weren't computed once
+    for metric_none in metrics_none:
+        if metric_none not in metrics_results:
+            metrics_results[metric_none] = None
 
     # Averages the scores of the current branch if hierarchical averaging
     if hierarchical_averaging:
         return {
-            metric_name: sum(scores) / len(scores)
+            metric_name: sum(scores) / len(scores) if scores is not None else None
             for metric_name, scores in metrics_results.items()
         }
     return metrics_results
@@ -597,8 +607,11 @@ def _aggregate_results_per_leaf_type(
     if not hierarchical_averaging:
         results_types = {
             type_name: {
-                met: sum(scores) / len(scores) for met, scores in metrics_scores.items()
+                met: sum(scores) / len(scores) if scores is not None else None
+                for met, scores in metrics_scores.items()
             }
+            if metrics_scores is not None
+            else None
             for type_name, metrics_scores in results_types.items()
         }
 
@@ -621,6 +634,7 @@ def __aggregate_results_per_leaf_type(
 
     # Gather scores per metric name
     results_types = {}  # {type: {metric: [results]}}
+    types_none = set()
     for node_name, type_name in schema.items():
         results_node = results[node_name]
         if isinstance(type_name, dict):
@@ -633,13 +647,16 @@ def __aggregate_results_per_leaf_type(
                 hierarchical_averaging=hierarchical_averaging,
             )
             for key_branch, metrics_branch in branch_results.items():
+                if metrics_branch is None:
+                    types_none.add(key_branch)
+                    continue
                 if key_branch not in results_types:
                     results_types[key_branch] = {}
                 for key_metric_branch in metrics_branch:
                     if key_metric_branch not in results_types[key_branch]:
                         results_types[key_branch][key_metric_branch] = []
             results_types = merge_dicts(results_types, branch_results)
-        else:
+        elif results_node is not None:
             if type_name not in results_types:
                 results_types[type_name] = {}
             for metric_name, metric_results in results_node.items():
@@ -649,12 +666,24 @@ def __aggregate_results_per_leaf_type(
                     metrics[metric_name].get_metric_score(metric_results)
                 )
 
+        else:
+            types_none.add(type_name)
+
+    # TODO just identify everything from the tree_metrics instead for nested?
+    # Insert `None` entries for types that weren't evaluated once
+    for type_name in types_none:
+        if type_name not in results_types:
+            results_types[type_name] = None
+
     # Compute the mean of each type scores
     if hierarchical_averaging:
         return {
             type_name: {
-                met: sum(scores) / len(scores) for met, scores in metrics_scores.items()
+                met: sum(scores) / len(scores) if scores is not None else None
+                for met, scores in metrics_scores.items()
             }
+            if metrics_scores is not None
+            else None
             for type_name, metrics_scores in results_types.items()
         }
     return results_types

@@ -80,7 +80,7 @@ def treeval_score(
     # Normalize metrics scores and computes treeval score
     scores = []
     for metric_name, metric_score in results.copy().items():
-        if metric_name in _PRF_METRIC_NAMES:
+        if metric_name in _PRF_METRIC_NAMES or metric_score is None:
             continue
         if metrics[metric_name].score_range != (0, 1):
             low_bound, high_bound = metrics[metric_name].score_range

@@ -17,11 +17,17 @@ from treeval.treeval import (
 from tests.utils_tests import METRICS
 
 # Treeval results
-# (schema, tree_results, aggregated_results_metrics, aggregated_results_leaf_type)
+# (schema, tree_metrics, tree_results, results_aggr_metrics, results_aggr_leaf_type)
 __schema = {
     "n1": "integer",
     "n2": "integer",
     "n3": {"n4": "integer", "n5": "string"},
+}
+__types_metrics = {
+    "string": ["bleu"],
+    "integer": ["accuracy"],
+    "number": ["accuracy"],
+    (): ["exact_match"],  # choice among list
 }
 RESULTS_CASES = [
     (
@@ -62,10 +68,30 @@ RESULTS_CASES = [
         {"accuracy": 0.5, "mse": 0.25, "bleu": 1},
         {"integer": {"accuracy": 0.5, "mse": 0}, "string": {"bleu": 1, "mse": 1}},
     ),
+    (
+        __schema,
+        {
+            "n1": {"accuracy": {"score": 0}, "mse": {"mse": 0}},
+            "n2": {"accuracy": {"score": 0.5}, "mse": {"mse": 0}},
+            "n3": {
+                "n4": {"accuracy": {"score": 1}, "mse": {"mse": 0}},
+                "n5": None,
+            },
+            PRECISION_NODE_KEY: 1,
+            RECALL_NODE_KEY: 1,
+            F1_NODE_KEY: 1,
+            PRECISION_LEAF_KEY: 1,
+            RECALL_LEAF_KEY: 1,
+            F1_LEAF_KEY: 1,
+        },
+        {"accuracy": 0.5, "mse": 0, "bleu": None},
+        {"integer": {"accuracy": 0.5, "mse": 0}, "string": None},  # TODO nested None
+    ),
 ]
 
 
 def get_tree_metrics_from_tree_results(tree_results: dict, schema: dict) -> dict:
+    # some leaves values might be `None`
     tree_metrics = {}
     for key, value in schema.items():
         if isinstance(value, dict):
@@ -73,7 +99,10 @@ def get_tree_metrics_from_tree_results(tree_results: dict, schema: dict) -> dict
                 tree_results[key], value
             )
         else:
-            tree_metrics[key] = set(tree_results[key])
+            metrics = tree_results.get(key)
+            if metrics is None:
+                metrics = __types_metrics[value]
+            tree_metrics[key] = set(metrics)
     return tree_metrics
 
 

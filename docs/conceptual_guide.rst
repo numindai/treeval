@@ -1,6 +1,6 @@
 
 ====================================
-Conceptual guide of evaluating trees
+Conceptual guide
 ====================================
 
 This page details how treeval works conceptually.
