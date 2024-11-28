@@ -2,6 +2,16 @@
 
 [Documentation](https://treeval.readthedocs.io/en/latest/)
 
+## Introduction
+
+Treeval is a Python package providing an easy and flexible way to evaluate the matching of tree-based data, i.e. dictionaries. It is initially developed to evaluate the results of [structured data extraction tasks](https://numind.ai/blog/nuextract-a-foundation-model-for-structured-extraction>) from language models, but can be used with any type of leaf values and metrics.
+
+Treeval can be installed from PyPi by running:
+
+```bash
+pip install treeval
+```
+
 ## Code examples
 
 ```Python

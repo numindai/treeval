@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import evaluate
+import numpy as np
 from evaluate import EvaluationModule
 
 if TYPE_CHECKING:
@@ -86,6 +87,25 @@ class TreevalMetric:
             value of an entry with the key being either "score" or the name of the
             metric.
         """
+        return self._compute(predictions, references)
+
+    def _compute(
+        self,
+        predictions: Sequence[Any],
+        references: Sequence[Any],
+    ) -> dict:
+        """
+        Compute the metric score between pairs of references and predictions.
+
+        This method is intended to be overridden by child classes if required.
+
+        :param predictions: list of predictions to evaluate.
+        :param references: expected reference values.
+        :return: the score as a dictionary. The absolute score, which is the average of
+            the score of all individual pairs of reference/prediction, should be the
+            value of an entry with the key being either "score" or the name of the
+            metric.
+        """
         if self._is_hf_module:
             return self._module.compute(
                 predictions=predictions, references=references, **self._kwargs
@@ -126,6 +146,17 @@ class TreevalMetric:
         metric (``metric.name``). This method is especially used when assigning pairs of
         predictions and references when evaluating lists of items.
         It can be overridden to handle specific cases.
+
+        :param metric_result: metric results as a dictionary.
+        :return: absolute metric score value as a floating point number.
+        """
+        return self._get_metric_score(metric_result)
+
+    def _get_metric_score(self, metric_result: dict) -> float:
+        """
+        Return the absolute score value of the results returned by the metric.
+
+        This method is intended to be overridden by child classes if required.
 
         :param metric_result: metric results as a dictionary.
         :return: absolute metric score value as a floating point number.
@@ -206,10 +237,69 @@ class MSE(TreevalMetric):
 
 
 class ExactMatch(TreevalMetric):
-    """Exact match, wrapper of the Hugging Face evaluation module."""
+    """
+    Exact match metric, acting as a "type-agnostic" accuracy metric.
 
-    def __init__(self, **kwargs) -> None:
-        super().__init__(evaluate.load("exact_match"), **kwargs)
+    This metric supports multiple types, but handles them slightly differently:
+
+    * **strings** are passed to the Hugging Face ``exact_match``
+      `metric module <https://huggingface.co/spaces/evaluate-metric/exact_match>`_;
+    * **floats** are compared using the numpy
+      `is_close <https://numpy.org/doc/stable/reference/generated/numpy.isclose.html>`_
+      method;
+    * **integers** are compared using the numpy
+      `equal <https://numpy.org/doc/stable/reference/generated/numpy.equal.html>`_
+      method for faster execution;
+    * **other types** are Pythonically compared using the ``__equal__`` magic method
+      called with the ``==`` operator.
+
+    :param rtol_float: relative tolerance argument to pass to the ``numpy.isclose``
+        method (default: ``1e-5``).
+    :param atol_float: relative tolerance argument to pass to the ``numpy.isclose``
+        method (default: ``1e-8``).
+    """
+
+    def __init__(
+        self, rtol_float: float = 1e-5, atol_float: float = 1e-8, **kwargs
+    ) -> None:
+        self._string_acc = evaluate.load("exact_match")
+        self._rtol_float = rtol_float
+        self._atol_float = atol_float
+        super().__init__(None, "exact_match", **kwargs)
+
+    def _compute(
+        self,
+        predictions: Sequence[Any],
+        references: Sequence[Any],
+    ) -> dict:
+        """
+        Compute the metric score between pairs of references and predictions.
+
+        :param predictions: list of predictions to evaluate.
+        :param references: expected reference values.
+        :return: the score as a dictionary. The absolute score, which is the average of
+            the score of all individual pairs of reference/prediction, should be the
+            value of an entry with the key being either "score" or the name of the
+            metric.
+        """
+        if isinstance(predictions[0], str):
+            return self._string_acc.compute(
+                predictions=predictions, references=references, **self._kwargs
+            )
+        if isinstance(predictions, np.ndarray) or isinstance(
+            predictions[0], (int, float)
+        ):
+            if not isinstance(predictions, np.ndarray):
+                predictions = np.array(predictions)
+                references = np.array(references)
+            if np.issubdtype(predictions.dtype, np.integer):
+                res = np.equal(predictions, references)
+            else:  # float
+                res = np.isclose(
+                    predictions, references, self._rtol_float, self._atol_float
+                )
+            return {"exact_match": np.count_nonzero(res) / len(predictions)}
+        return {"exact_match": _exact_match_python(predictions, references)}
 
 
 class BERTScore(TreevalMetric):
@@ -234,12 +324,17 @@ class RSquared(TreevalMetric):
 
 
 class Levenshtein(TreevalMetric):
-    """Levenshtein distance wrapper of the Hugging Face ``Natooz/levenshtein`` space."""
+    """
+    Levenshtein distance wrapper of the Hugging Face ``Natooz/levenshtein`` space.
+
+    This metric uses the `Levenshtein <https://github.com/rapidfuzz/Levenshtein>`_
+    Python package.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("Natooz/levenshtein"), **kwargs)
 
-    def get_metric_score(self, metric_result: dict) -> float:
+    def _get_metric_score(self, metric_result: dict) -> float:
         """
         Return the absolute score value of the results returned by the metric.
 
@@ -251,20 +346,10 @@ class Levenshtein(TreevalMetric):
         return metric_result["levenshtein_ratio"]
 
 
-class BooleanAccuracy(TreevalMetric):
-    """Check the equality of booleans, yielding 1 if they are equal, 0 otherwise."""
-
-    def __init__(self) -> None:
-        super().__init__(_boolean_accuracy, "boolean_accuracy")
-
-
-def _boolean_accuracy(
-    predictions: Sequence[bool],
-    references: Sequence[bool],
-) -> dict[str, float]:
-    return {
-        "boolean_accuracy": len(
-            [0 for pred, ref in zip(predictions, references) if pred == ref]
-        )
-        / len(predictions)
-    }
+def _exact_match_python(
+    predictions: Sequence[Any],
+    references: Sequence[Any],
+) -> float:
+    return len([0 for pred, ref in zip(predictions, references) if pred == ref]) / len(
+        predictions
+    )

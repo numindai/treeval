@@ -25,8 +25,8 @@ __tree_metrics_complete_schema = create_tree_metrics(
     COMPLETE_SCHEMA,
     {
         "n1": ["sacrebleu", "exact_match"],
-        "n3": ["boolean_accuracy"],
-        "n5": ["accuracy"],
+        "n3": ["exact_match"],
+        "n5": ["exact_match"],
         "n7": ["sacrebleu"],
         "n8": {"n82": ["sacrebleu"]},
         "n10": {"n10_int": ["accuracy"], "n10_string": ["sacrebleu"]},
@@ -34,7 +34,7 @@ __tree_metrics_complete_schema = create_tree_metrics(
     {
         "string_2": ["sacrebleu"],
         "integer": ["accuracy"],
-        "number": ["accuracy"],
+        "number": ["exact_match"],
         "datetime": ["sacrebleu"],
         (): ["exact_match"],  # choice among list
     },
@@ -163,9 +163,9 @@ DATA_CASES = [
                     "ref_len": 5,
                 }
             },
-            "n3": {"boolean_accuracy": {"boolean_accuracy": 1.0}},
+            "n3": {"exact_match": {"exact_match": 1.0}},
             "n4": {"accuracy": {"accuracy": 1.0}},
-            "n5": {"accuracy": {"accuracy": 1.0}},
+            "n5": {"exact_match": {"exact_match": 1.0}},
             "n6": {
                 "sacrebleu": {
                     "score": 100.00000000000004,
@@ -211,7 +211,7 @@ DATA_CASES = [
             PRECISION_LEAF_KEY: 1,
             RECALL_LEAF_KEY: 1,
             F1_LEAF_KEY: 1,
-            TREEVAL_SCORE_KEY: 0.8973214285714286,
+            TREEVAL_SCORE_KEY: 0.8492063492063493,
         },
     ),
 ]

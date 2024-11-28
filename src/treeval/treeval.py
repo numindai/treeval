@@ -7,7 +7,7 @@ from warnings import warn
 
 import numpy as np
 
-from .metrics import BERTScore, BooleanAccuracy, ExactMatch, Levenshtein
+from .metrics import BERTScore, ExactMatch, Levenshtein
 from .utils import (
     compute_matching_from_score_matrix,
     count_dictionary_nodes,
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 PRECISION_NODE_KEY = "precision_node"
 RECALL_NODE_KEY = "recall_node"
 F1_NODE_KEY = "f1_node"
-PRECISION_LEAF_KEY = "precision_leaf"
+PRECISION_LEAF_KEY = "precision_leaf"  # TODO renaming value precision?
 RECALL_LEAF_KEY = "recall_leaf"
 F1_LEAF_KEY = "f1_leaf"
 TREEVAL_SCORE_KEY = "treeval_score"
@@ -45,7 +45,7 @@ _PRF_METRIC_NAMES = {
 TREEVAL_SCORE_TYPES_METRICS = {
     "integer": ["exact_match"],
     "number": ["exact_match"],
-    "boolean": ["boolean_accuracy"],
+    "boolean": ["exact_match"],
     "string": ["levenshtein", "bertscore"],
     (): ["exact_match"],
 }
@@ -157,7 +157,6 @@ def create_treeval_score_default_tree_metrics(
     metrics = {
         m.name: m
         for m in {
-            BooleanAccuracy(),
             ExactMatch(),
             Levenshtein(),
             BERTScore(),

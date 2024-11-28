@@ -37,7 +37,7 @@ A schema is used in combination with a ``tree_metrics``, which is dictionary wit
     tree_metrics = {
         "n1": {"accuracy"},
         "n2": {"bleu", "levenshtein"},
-        "n3": {"n4": {"bleu"}, "n5": {"boolean_accuracy"}},
+        "n3": {"n4": {"bleu"}, "n5": {"exact_match"}},
     }
 
 In some cases, you might be working with complex trees of several depths and multiple branches that might be time consuming to create a metrics tree from, and simply want to map leaves types to specific sets of metrics. The :py:func:`treeval.create_tree_metrics` allows to easily do that. It also allows to include metrics to compute for specific leaves. Notice that the "boolean" type of the ``n5`` leaf is missing from the ``types_metrics`` dictionary. Trees following the schema can still be evaluated as its metrics are provided in the ``leaves_metrics`` dictionary.
@@ -53,7 +53,7 @@ In some cases, you might be working with complex trees of several depths and mul
     # metrics to compute for specific leaves
     leaves_metrics = {
         "n2": ["levenshtein"],
-        "n3": {"n5": ["boolean_accuracy"]},
+        "n3": {"n5": ["exact_match"]},
     }
 
     tree_metrics = create_tree_metrics(tree_schema, leaves_metrics, types_metrics)
@@ -66,7 +66,7 @@ When you have a well defined schema and metrics tree, you can call the :py:func:
 ..  code-block:: python
 
     from treeval import treeval
-    from treeval.metrics import BLEU, Accuracy, BooleanAccuracy, Levenshtein
+    from treeval.metrics import BLEU, Accuracy, Levenshtein, ExactMatch
 
     # Load the metrics modules, using their names as provided in ``tree_metrics``
     metrics = {
@@ -74,8 +74,8 @@ When you have a well defined schema and metrics tree, you can call the :py:func:
         for metric in [
             Accuracy(),
             BLEU(),
-            BooleanAccuracy(),
             Levenshtein(),
+            ExactMatch(),
         ]
     }
 
@@ -135,7 +135,7 @@ The above code block will print the "raw" results as a tree following the schema
                     "reference_length": 1,
                 }
             },
-            "n5": {"boolean_accuracy": {"boolean_accuracy": 1.0}},
+            "n5": {"exact_match": {"exact_match": 1.0}},
         },
         "precision_node": 1.0,
         "recall_node": 0.9,
@@ -155,7 +155,7 @@ This complete results report provides great interpretability, but might be too c
     {
         "accuracy": 1.0,
         "bleu": 0.0,
-        "boolean_accuracy": 1.0,
+        "exact_match": 1.0,
         "f1_leaf": 0.8333333333333334,
         "f1_node": 0.9473684210526316,
         "levenshtein": 1.0,
@@ -171,7 +171,7 @@ Calling :py:func:`treeval.aggregate_results_per_leaf_type` will provide the aver
 
     {
         "integer": {"accuracy": 1.0},
-        "boolean": {"boolean_accuracy": 1.0},
+        "boolean": {"exact_match": 1.0},
         "string": {"bleu": 0.0, "levenshtein": 1.0},
         "recall_node": 0.9,
         "recall_leaf": 0.8333333333333334,
