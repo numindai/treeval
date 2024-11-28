@@ -143,6 +143,7 @@ The above code block will print the "raw" results as a tree following the schema
         "precision_leaf": 0.8333333333333334,
         "recall_leaf": 0.8333333333333334,
         "f1_leaf": 0.8333333333333334,
+        "treeval_score": 0.5921052631578948,
     }
 
 Aggregating results
@@ -163,6 +164,7 @@ This complete results report provides great interpretability, but might be too c
         "precision_node": 1.0,
         "recall_leaf": 0.8333333333333334,
         "recall_node": 0.9,
+        "treeval_score": 0.5921052631578948,
     }
 
 Calling :py:func:`treeval.aggregate_results_per_leaf_type` will provide the average metrics results per leaf type, providing a finer degree of details.
@@ -179,4 +181,5 @@ Calling :py:func:`treeval.aggregate_results_per_leaf_type` will provide the aver
         "precision_node": 1.0,
         "f1_node": 0.9473684210526316,
         "precision_leaf": 0.8333333333333334,
+        "treeval_score": 0.5921052631578948,
     }

@@ -12,6 +12,7 @@ from treeval.metrics import (
     MSE,
     Accuracy,
     ExactMatch,
+    Levenshtein,
     SacreBLEU,
 )
 
@@ -29,6 +30,7 @@ METRICS = [
     BLEU(),
     SacreBLEU(),
     MSE(),
+    Levenshtein(),
 ]
 METRICS = {metric.name: metric for metric in METRICS}
 
