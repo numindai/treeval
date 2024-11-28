@@ -167,70 +167,120 @@ class TreevalMetric:
 
 
 class BLEU(TreevalMetric):
-    """BLEU, wrapper of the Hugging Face evaluation module."""
+    """
+    BLEU metric.
+
+    Wrapper of the Hugging Face `"bleu" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/bleu>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("bleu"), score_range=(0, 100), **kwargs)
 
 
 class SacreBLEU(TreevalMetric):
-    """SacreBLEU, wrapper of the Hugging Face evaluation module."""
+    """
+    SacreBLEU metric.
+
+    Wrapper of the Hugging Face `"sacrebleu" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/sacrebleu>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("sacrebleu"), score_range=(0, 100), **kwargs)
 
 
 class ROUGE(TreevalMetric):
-    """ROUGE, wrapper of the Hugging Face evaluation module."""
+    """
+    ROUGE metric.
+
+    Wrapper of the Hugging Face `"rouge" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/rouge>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("rouge"), **kwargs)
 
 
 class MAUVE(TreevalMetric):
-    """MAUVE, wrapper of the Hugging Face evaluation module."""
+    """
+    MAUVE metric.
+
+    Wrapper of the Hugging Face `"mauve" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/mauve>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("mauve"), **kwargs)
 
 
 class METEOR(TreevalMetric):
-    """METEOR, wrapper of the Hugging Face evaluation module."""
+    """
+    METEOR metric.
+
+    Wrapper of the Hugging Face `"meteor" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/meteor>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("meteor"), **kwargs)
 
 
 class Accuracy(TreevalMetric):
-    """Precision, wrapper of the Hugging Face evaluation module."""
+    """
+    Accuracy metric for integers.
+
+    Wrapper of the Hugging Face `"accuracy" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/accuracy>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("accuracy"), **kwargs)
 
 
 class Precision(TreevalMetric):
-    """Precision, wrapper of the Hugging Face evaluation module."""
+    """
+    Precision metric.
+
+    Wrapper of the Hugging Face `"precision" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/precision>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("precision"), **kwargs)
 
 
 class Recall(TreevalMetric):
-    """Recall, wrapper of the Hugging Face evaluation module."""
+    """
+    Recall metric.
+
+    Wrapper of the Hugging Face `"recall" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/recall>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("recall"), **kwargs)
 
 
 class F1(TreevalMetric):
-    """F1, wrapper of the Hugging Face evaluation module."""
+    """
+    F1 metric.
+
+    Wrapper of the Hugging Face `"f1" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/f1>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("f1"), **kwargs)
 
 
 class MSE(TreevalMetric):
-    """MSE, wrapper of the Hugging Face evaluation module."""
+    """
+    MSE metric.
+
+    Wrapper of the Hugging Face `"mse" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/mse>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("mse"), higher_is_better=False, **kwargs)
@@ -242,8 +292,8 @@ class ExactMatch(TreevalMetric):
 
     This metric supports multiple types, but handles them slightly differently:
 
-    * **strings** are passed to the Hugging Face ``exact_match``
-      `metric module <https://huggingface.co/spaces/evaluate-metric/exact_match>`_;
+    * **strings** are passed to the Hugging Face `"exact_match" evaluation module
+      <https://huggingface.co/spaces/evaluate-metric/exact_match>`_;
     * **floats** are compared using the numpy
       `is_close <https://numpy.org/doc/stable/reference/generated/numpy.isclose.html>`_
       method;
@@ -257,6 +307,7 @@ class ExactMatch(TreevalMetric):
         method (default: ``1e-5``).
     :param atol_float: relative tolerance argument to pass to the ``numpy.isclose``
         method (default: ``1e-8``).
+    :param kwargs: keyword arguments to pass to the ``exact_match`` module for strings.
     """
 
     def __init__(
@@ -303,21 +354,36 @@ class ExactMatch(TreevalMetric):
 
 
 class BERTScore(TreevalMetric):
-    """BERTScore, wrapper of the Hugging Face evaluation module."""
+    """
+    BERTScore metric.
+
+    Wrapper of the Hugging Face `"bertscore" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/bertscore>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("bertscore"), **kwargs)
 
 
 class Perplexity(TreevalMetric):
-    """Perplexity, wrapper of the Hugging Face evaluation module."""
+    """
+    Perplexity metric.
+
+    Wrapper of the Hugging Face `"perplexity" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/perplexity>`_.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(evaluate.load("perplexity"), **kwargs)
 
 
 class RSquared(TreevalMetric):
-    """RSquared, wrapper of the Hugging Face evaluation module."""
+    """
+    R-squared metric.
+
+    Wrapper of the Hugging Face `"r_squared" evaluation module
+    <https://huggingface.co/spaces/evaluate-metric/r_squared>`_.
+    """
 
     def __init__(self) -> None:  # module doesn't take kwargs
         super().__init__(evaluate.load("r_squared"))
@@ -325,7 +391,10 @@ class RSquared(TreevalMetric):
 
 class Levenshtein(TreevalMetric):
     """
-    Levenshtein distance wrapper of the Hugging Face ``Natooz/levenshtein`` space.
+    Levenshtein distance metrics.
+
+    Wrapper of the Hugging Face `"Natooz/levenshtein"
+    <https://huggingface.co/spaces/Natooz/levenshtein>`_ space.
 
     This metric uses the `Levenshtein <https://github.com/rapidfuzz/Levenshtein>`_
     Python package.
