@@ -71,7 +71,7 @@ Additionally some leaves types might be "Null" (Python ``None``) marking an expl
 For these reasons, **Treeval only computes metrics scores on the pairs of leaves that are both present in the reference and hypothesis**, and **report separately precision, recall and f1 scores at the tree-level of the presence of "aligned" nodes and leaves** between reference and hypothesis trees. These results are mapped in the the output :py:func:`treeval.treeval` method by the ``precision_node``, ``recall_node``, ``f1_node``, ``precision_leaf``, ``recall_leaf`` and ``f1_leaf`` keys. The figure below gives a visual representation of how these cases are identified to compute the precision and recall scores.
 
 .. figure:: resources/prf_node_leaf.svg
-   :scale: 60 %
+   :scale: 80 %
    :alt: Precision, Recall and F1 schema
    :align: center
 
