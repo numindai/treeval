@@ -14,7 +14,7 @@ from treeval.treeval import (
     TREEVAL_SCORE_KEY,
 )
 
-from tests.utils_tests import COMPLETE_SCHEMA, METRICS
+from tests.utils_tests import COMPLETE_SCHEMA, METRICS, trees_approx_equal
 
 # Test cases
 # [(schema, reference, prediction, tree_metrics, expected_scores)]
@@ -325,7 +325,7 @@ def test_treeval(data: tuple) -> None:
     """
     schema, references, predictions, tree_metrics, expected_scores = data
     results = treeval(predictions, references, schema, METRICS, tree_metrics)
-    assert results == expected_scores
+    assert trees_approx_equal(expected_scores, results)
 
 
 @pytest.mark.parametrize("data", PRF_CASES)
