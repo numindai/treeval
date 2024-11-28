@@ -52,7 +52,7 @@ tests = [
     "scikit-learn",  # F1 metric used by evaluate
     "sacrebleu",  # bleu and sacrebleu metrics used by evaluate
     # "bert-score",  # BERTScore metric used in Treeval score
-    # "Levenshtein",  # levenshtein distance metric used in Treeval score
+    "Levenshtein",  # levenshtein distance metric
 ]
 docs = [
     "furo",  # theme
