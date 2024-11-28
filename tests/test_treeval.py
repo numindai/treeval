@@ -18,7 +18,6 @@ from tests.utils_tests import COMPLETE_SCHEMA, METRICS, trees_approx_equal
 
 # Test cases
 # [(schema, reference, prediction, tree_metrics, expected_scores)]
-# TODO test exact match on strings
 __simple_schema = {"n1": "string", "n2": "string", "n3": "integer"}
 __simple_schema_tree_metrics = {"n1": {"sacrebleu"}, "n2": {"sacrebleu"}, "n3": {"mse"}}
 __tree_metrics_complete_schema = create_tree_metrics(
