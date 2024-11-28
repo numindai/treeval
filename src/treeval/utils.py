@@ -54,7 +54,7 @@ def flatten_nested_dict(
     return items
 
 
-def merge_dicts(dict1: dict, dict2: dict) -> dict:
+def merge_dicts(dict1: dict, dict2: dict, discard_none: bool = False) -> dict:
     """
     Recursively merge two dictionaries of the same format.
 
@@ -62,6 +62,8 @@ def merge_dicts(dict1: dict, dict2: dict) -> dict:
 
     :param dict1: The first dictionary.
     :param dict2: The second dictionary.
+    :param discard_none: if provided ``True``, ``None`` values will be discarded from
+        the final merged dictionary.
     :return: The merged dictionary.
     """
     merged = {}
@@ -79,11 +81,17 @@ def merge_dicts(dict1: dict, dict2: dict) -> dict:
                 merged[key] = dict1[key] + dict2[key]
             else:
                 # Merge primitive types into lists
-                merged[key] = (
-                    [dict1[key], dict2[key]]
-                    if not isinstance(dict1[key], list)
-                    else dict1[key] + [dict2[key]]
-                )
+                merged[key] = []
+                if dict1[key] is not None or not discard_none:
+                    if isinstance(dict1[key], list):
+                        merged[key].extend(dict1[key])
+                    else:
+                        merged[key].append(dict1[key])
+                if dict2[key] is not None or not discard_none:
+                    if isinstance(dict2[key], list):
+                        merged[key].extend(dict2[key])
+                    else:
+                        merged[key].append(dict2[key])
         elif key in dict1:
             # Key only in dict1
             merged[key] = dict1[key]
@@ -112,6 +120,26 @@ def count_dictionary_nodes(dictionary: dict, only_leaves: bool = False) -> int:
         else:
             num_nodes += 1
     return num_nodes
+
+
+def get_unique_leaf_values(dictionary: dict) -> set[str]:
+    """
+    Return the set of unique leaf values within a dictionary.
+
+    All leaf values must be hashable.
+
+    :param dictionary: dictionary to inspect.
+    :return: set of unique leaf values within the dictionary.
+    """
+    metrics = set()
+    for node_value in dictionary.values():
+        if isinstance(node_value, dict):
+            metrics |= get_unique_leaf_values(node_value)
+        elif isinstance(node_value, set):
+            metrics |= node_value
+        else:
+            metrics.add(node_value)
+    return metrics
 
 
 def compute_matching_from_score_matrix(

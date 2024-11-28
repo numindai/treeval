@@ -7,9 +7,11 @@ from warnings import warn
 
 import numpy as np
 
+from .metrics import BERTScore, BooleanAccuracy, ExactMatch, Levenshtein
 from .utils import (
     compute_matching_from_score_matrix,
     count_dictionary_nodes,
+    get_unique_leaf_values,
     merge_dicts,
 )
 
@@ -29,6 +31,7 @@ F1_NODE_KEY = "f1_node"
 PRECISION_LEAF_KEY = "precision_leaf"
 RECALL_LEAF_KEY = "recall_leaf"
 F1_LEAF_KEY = "f1_leaf"
+TREEVAL_SCORE_KEY = "treeval_score"
 _PRF_METRIC_NAMES = {
     PRECISION_NODE_KEY,
     RECALL_NODE_KEY,
@@ -36,6 +39,15 @@ _PRF_METRIC_NAMES = {
     PRECISION_LEAF_KEY,
     RECALL_LEAF_KEY,
     F1_LEAF_KEY,
+    TREEVAL_SCORE_KEY,
+}
+# Treeval score
+TREEVAL_SCORE_TYPES_METRICS = {
+    "integer": ["exact_match"],
+    "number": ["exact_match"],
+    "boolean": ["boolean_accuracy"],
+    "string": ["levenshtein", "bertscore"],
+    (): ["exact_match"],
 }
 
 
@@ -90,6 +102,18 @@ def treeval(
     # Recursively parses the schema and computes the metrics scores at the leaves
     results = _recursive_parse(predictions, references, schema, metrics, tree_metrics)
 
+    # Compute the Treeval score
+    results_aggregated_per_metrics = _aggregate_results_per_metric(
+        results,
+        schema,
+        tree_metrics,
+        metrics,
+        hierarchical_averaging=hierarchical_averaging,
+    )
+    results[TREEVAL_SCORE_KEY] = _treeval_score(
+        results_aggregated_per_metrics.copy(), metrics
+    )
+
     # Aggregate per metric and/or type
     if aggregate_results_per_metric:
         if aggregate_results_per_leaf_type:
@@ -100,17 +124,82 @@ def treeval(
                 "will take precedence.",
                 stacklevel=2,
             )
-        return _aggregate_results_per_metric(
-            results,
-            tree_metrics,
-            metrics,
-            hierarchical_averaging=hierarchical_averaging,
-        )
+        results_aggregated_per_metrics[TREEVAL_SCORE_KEY] = results[TREEVAL_SCORE_KEY]
+        return results_aggregated_per_metrics
     if aggregate_results_per_leaf_type:
         return _aggregate_results_per_leaf_type(
             results, schema, metrics, hierarchical_averaging=hierarchical_averaging
         )
+
     return results
+
+
+def create_treeval_score_default_tree_metrics(
+    schema: dict,
+) -> tuple[dict, dict[str, TreevalMetric]]:
+    """
+    Create the ``tree_metrics`` of a schema with the default Treeval score metrics.
+
+    This method calls the :py:func:`treeval.create_tree_metrics` to create a tree
+    metrics with the default metrics as introduced in the :ref:`The Treeval score`
+    page. It also returns the default metrics modules initialized.
+
+    :param schema: schema of the tree as a dictionary specifying each leaf type. The
+        references must all follow this exact tree structure, while the predictions can
+        have mismatching branches which will impact the tree precision/recall/f1 scores
+        returned by the method.
+    :return: the treeval score results, a dictionary with the ``treeval_score`` entry
+        and node/leaf precision/recall/f1 scores.
+    """
+    # metrics are initialized here, as they might require external dependencies that
+    # shouldn't be required to run the rest of the library. If required dependencies are
+    # missing, exceptions will be raised when loading the metrics.
+    metrics = {
+        m.name: m
+        for m in {
+            BooleanAccuracy(),
+            ExactMatch(),
+            Levenshtein(),
+            BERTScore(),
+        }
+    }
+
+    # Create tree metrics
+    return create_tree_metrics(
+        schema, types_metrics=TREEVAL_SCORE_TYPES_METRICS
+    ), metrics
+
+
+def _treeval_score(
+    results: dict[str, float], metrics: dict[str, TreevalMetric]
+) -> float:
+    """
+    Compute the Treeval score from metrics-aggregated results.
+
+    The Treeval score is the product of the average of the metrics scores, the node F1
+    and the leaf F1 scores.
+
+    :param results: results from the :py:func:`treeval.treeval` method aggregated per
+        metrics.
+    :param metrics: list of modules used for the ``results``. This method requires them
+        to normalize metrics scores.
+    :return: the treeval score result.
+    """
+    # Normalize metrics scores and computes treeval score
+    scores = []
+    for metric_name, metric_score in results.copy().items():
+        if metric_name in _PRF_METRIC_NAMES or metric_score is None:
+            continue
+        if metrics[metric_name].score_range != (0, 1):
+            low_bound, high_bound = metrics[metric_name].score_range
+            results[metric_name] = (
+                min(max(metric_score, low_bound), high_bound) - low_bound
+            ) / (high_bound - low_bound)
+        if not metrics[metric_name].higher_is_better:
+            results[metric_name] = 1 - results[metric_name]
+        scores.append(results[metric_name])
+
+    return sum(scores) / len(scores) * results[F1_NODE_KEY] * results[F1_LEAF_KEY]
 
 
 def _recursive_parse(
@@ -198,7 +287,7 @@ def _recursive_parse(
                     # metric to be able to assign pairs of references/predictions.
                     if is_list_of_dicts:
                         score = _aggregate_results_per_metric(
-                            score, tree_metrics, metrics
+                            score, schema[0], tree_metrics, metrics
                         )
                     metrics_results[idx].append(score)
 
@@ -457,6 +546,7 @@ def __get_unique_metrics_from_tree_metrics(tree_metrics: dict) -> set[str]:
 
 def _aggregate_results_per_metric(
     results: dict,
+    schema: dict,
     tree_metrics: dict,
     metrics: dict[str, TreevalMetric],
     hierarchical_averaging: bool = False,
@@ -468,6 +558,10 @@ def _aggregate_results_per_metric(
     provided ``results`` to the average of its scores found within the results tree.
 
     :param results: non-aggregated results from the :py:func:`treeval.treeval` method.
+    :param schema: schema of the tree as a dictionary specifying each leaf type. The
+        references must all follow this exact tree structure, while the predictions can
+        have mismatching branches which will impact the tree precision/recall/f1 scores
+        returned by the method.
     :param tree_metrics: dictionary with the same schema/structure as ``results``
         specifying at each leaf the set of metrics to use for evaluate them, referenced
         by their names as found in the ``results``.
@@ -491,16 +585,22 @@ def _aggregate_results_per_metric(
     """
     # Gather the scores of all individual metrics in all leaves.
     metrics_results = __aggregate_results_per_metric(
-        results, tree_metrics, metrics, hierarchical_averaging=hierarchical_averaging
+        results, schema, metrics, hierarchical_averaging=hierarchical_averaging
     )
 
     # If hierarchical averaging is enabled, the averaging is already done in the child
     # method. Otherwise, it returned the list of all scores that we need to average.
     if not hierarchical_averaging:
         metrics_results = {
-            metric_name: sum(scores) / len(scores) if scores is not None else None
+            metric_name: sum(scores) / len(scores) if len(scores) > 0 else None
             for metric_name, scores in metrics_results.items()
         }
+
+    # Insert `None` entries for metrics of node results that weren't computed once
+    unique_metrics = get_unique_leaf_values(tree_metrics)
+    for metric_name in unique_metrics:
+        if metric_name not in metrics_results:
+            metrics_results[metric_name] = None
 
     # Re-include the tree precision/recall/f1 scores in the results to return.
     # These elements might not be in the `results` when this method is called to
@@ -514,7 +614,7 @@ def _aggregate_results_per_metric(
 
 def __aggregate_results_per_metric(
     results: dict,
-    tree_metrics: dict,
+    schema: dict,
     metrics: dict[str, TreevalMetric],
     hierarchical_averaging: bool = False,
 ) -> dict[str, float | list[float]]:
@@ -523,44 +623,37 @@ def __aggregate_results_per_metric(
 
     # Gather scores per metric name
     metrics_results = {}  # {metric_name: [results]}
-    metrics_none = set()
-    for node_name, value in tree_metrics.items():
+    for node_name, node_value in schema.items():
         results_node = results[node_name]
-        if isinstance(value, dict):
+        if results_node is None:
+            continue
+        if isinstance(node_value, dict):
             # Need to check that the keys of the branch results are all already present
             # in the metrics_results dictionary before merging them
             branch_results = __aggregate_results_per_metric(
                 results_node,
-                value,
+                node_value,
                 metrics,
                 hierarchical_averaging=hierarchical_averaging,
             )
-            for branch_key, branch_value in branch_results.items():
-                if branch_value is None:
-                    metrics_none.add(branch_key)
-                elif branch_key not in metrics_results:
+            for branch_key in branch_results:
+                if branch_key not in metrics_results:
                     metrics_results[branch_key] = []
             metrics_results = merge_dicts(metrics_results, branch_results)
-        elif results_node is not None:
+        else:
             for metric_name, metric_results in results_node.items():
                 if metric_name not in metrics_results:
                     metrics_results[metric_name] = []
                 metrics_results[metric_name].append(
                     metrics[metric_name].get_metric_score(metric_results)
                 )
-        else:
-            metrics_none |= tree_metrics[node_name]
-
-    # Insert `None` entries for metrics of node results that weren't computed once
-    for metric_none in metrics_none:
-        if metric_none not in metrics_results:
-            metrics_results[metric_none] = None
 
     # Averages the scores of the current branch if hierarchical averaging
     if hierarchical_averaging:
         return {
-            metric_name: sum(scores) / len(scores) if scores is not None else None
+            metric_name: sum(scores) / len(scores)
             for metric_name, scores in metrics_results.items()
+            if len(scores) > 0
         }
     return metrics_results
 
@@ -570,7 +663,7 @@ def _aggregate_results_per_leaf_type(
     schema: dict,
     metrics: dict[str, TreevalMetric],
     hierarchical_averaging: bool = False,
-) -> dict[dict[str, float]]:
+) -> dict[str, dict[str, float]]:
     """
     Aggregate the tree treeval results per leaf type.
 
@@ -607,7 +700,7 @@ def _aggregate_results_per_leaf_type(
     if not hierarchical_averaging:
         results_types = {
             type_name: {
-                met: sum(scores) / len(scores) if scores is not None else None
+                met: sum(scores) / len(scores) if len(scores) > 0 else None
                 for met, scores in metrics_scores.items()
             }
             if metrics_scores is not None
@@ -628,7 +721,7 @@ def __aggregate_results_per_leaf_type(
     schema: dict,
     metrics: dict[str, TreevalMetric],
     hierarchical_averaging: bool = False,
-) -> dict[dict[str, float | list[float]]]:
+) -> dict[str, dict[str, float | list[float]]]:
     # Same as _aggregate_results_per_leaf_type but recursive and discarding
     # precision/recall/f1 entries that are added at the end.
 
@@ -655,7 +748,9 @@ def __aggregate_results_per_leaf_type(
                 for key_metric_branch in metrics_branch:
                     if key_metric_branch not in results_types[key_branch]:
                         results_types[key_branch][key_metric_branch] = []
-            results_types = merge_dicts(results_types, branch_results)
+            results_types = merge_dicts(
+                results_types, branch_results, discard_none=True
+            )
         elif results_node is not None:
             if type_name not in results_types:
                 results_types[type_name] = {}
@@ -669,7 +764,6 @@ def __aggregate_results_per_leaf_type(
         else:
             types_none.add(type_name)
 
-    # TODO just identify everything from the tree_metrics instead for nested?
     # Insert `None` entries for types that weren't evaluated once
     for type_name in types_none:
         if type_name not in results_types:
@@ -679,7 +773,7 @@ def __aggregate_results_per_leaf_type(
     if hierarchical_averaging:
         return {
             type_name: {
-                met: sum(scores) / len(scores) if scores is not None else None
+                met: sum(scores) / len(scores) if len(scores) > 0 else None
                 for met, scores in metrics_scores.items()
             }
             if metrics_scores is not None

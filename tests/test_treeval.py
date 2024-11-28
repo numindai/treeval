@@ -11,12 +11,14 @@ from treeval.treeval import (
     PRECISION_NODE_KEY,
     RECALL_LEAF_KEY,
     RECALL_NODE_KEY,
+    TREEVAL_SCORE_KEY,
 )
 
 from tests.utils_tests import COMPLETE_SCHEMA, METRICS
 
 # Test cases
 # [(schema, reference, prediction, tree_metrics, expected_scores)]
+# TODO test exact match on strings
 __simple_schema = {"n1": "string", "n2": "string", "n3": "integer"}
 __simple_schema_tree_metrics = {"n1": {"sacrebleu"}, "n2": {"sacrebleu"}, "n3": {"mse"}}
 __tree_metrics_complete_schema = create_tree_metrics(
@@ -83,6 +85,7 @@ DATA_CASES = [
             PRECISION_LEAF_KEY: 1,
             RECALL_LEAF_KEY: 1,
             F1_LEAF_KEY: 1,
+            TREEVAL_SCORE_KEY: 0.34375,
         },
     ),
     (
@@ -208,6 +211,7 @@ DATA_CASES = [
             PRECISION_LEAF_KEY: 1,
             RECALL_LEAF_KEY: 1,
             F1_LEAF_KEY: 1,
+            TREEVAL_SCORE_KEY: 0.8973214285714286,
         },
     ),
 ]

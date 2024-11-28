@@ -12,6 +12,7 @@ from treeval.treeval import (
     PRECISION_NODE_KEY,
     RECALL_LEAF_KEY,
     RECALL_NODE_KEY,
+    TREEVAL_SCORE_KEY,
 )
 
 from tests.utils_tests import METRICS
@@ -45,6 +46,7 @@ RESULTS_CASES = [
             PRECISION_LEAF_KEY: 1,
             RECALL_LEAF_KEY: 1,
             F1_LEAF_KEY: 1,
+            TREEVAL_SCORE_KEY: 1,
         },
         {"accuracy": 1, "mse": 0, "bleu": 1},
         {"integer": {"accuracy": 1, "mse": 0}, "string": {"bleu": 1, "mse": 0}},
@@ -64,6 +66,7 @@ RESULTS_CASES = [
             PRECISION_LEAF_KEY: 1,
             RECALL_LEAF_KEY: 1,
             F1_LEAF_KEY: 1,
+            TREEVAL_SCORE_KEY: 1,
         },
         {"accuracy": 0.5, "mse": 0.25, "bleu": 1},
         {"integer": {"accuracy": 0.5, "mse": 0}, "string": {"bleu": 1, "mse": 1}},
@@ -83,9 +86,10 @@ RESULTS_CASES = [
             PRECISION_LEAF_KEY: 1,
             RECALL_LEAF_KEY: 1,
             F1_LEAF_KEY: 1,
+            TREEVAL_SCORE_KEY: 1,
         },
         {"accuracy": 0.5, "mse": 0, "bleu": None},
-        {"integer": {"accuracy": 0.5, "mse": 0}, "string": None},  # TODO nested None
+        {"integer": {"accuracy": 0.5, "mse": 0}, "string": None},
     ),
 ]
 
@@ -112,7 +116,9 @@ def test_aggregate_results(data: tuple) -> None:
     tree_metrics = get_tree_metrics_from_tree_results(tree_results, schema)
 
     # Check metrics aggregation
-    metrics_results = aggregate_results_per_metric(tree_results, tree_metrics, METRICS)
+    metrics_results = aggregate_results_per_metric(
+        tree_results, schema, tree_metrics, METRICS
+    )
     for prf_key in _PRF_METRIC_NAMES:
         del metrics_results[prf_key]
     assert metrics_results == results_metrics
