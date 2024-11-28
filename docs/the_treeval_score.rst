@@ -23,8 +23,9 @@ In an effort to standardize the evaluation of structured data extraction task, T
 
 * ``integer``: :py:class:`treeval.metrics.ExactMatch`. Even if a reference and prediction integers are relatively close, most structured data retrieval tasks are purely extractive, i.e. the actual integer to extract is in most cases present in the data. In other cases, Large Language Models (LLMs) already perform quite well in making deductions, computations and reasoning to retrieve the expected integer. Using a metric measuring the relative distance between two values is feasible, but would be not enough penalize the average scores when computed over common benchmarks. Penalizing if the predicted value is not the expected value allows the Treeval score to be less tolerant and keep larger room for model performances improvements over common benchmarks;
 * ``number``: :py:class:`treeval.metrics.ExactMatch`. This metric choice is motivated by the same reasons than for the integer type;
-* ``boolean``: :py:class:`treeval.metrics.BooleanAccuracy`, which is identical to ExactMatch but works with booleans;
+* ``boolean``: :py:class:`treeval.metrics.ExactMatch`, which acts as an accuracy score;
 * ``string``: :py:class:`treeval.metrics.Levenshtein` and :py:class:`treeval.metrics.BERTScore`. The Levenshtein distance (edit distance) measures the minimum number of deletions, additions and editions combined to perform on a prediction string until it becomes identical to a reference string. It is therefore a string similarity metric, which is represented as a normalized ratio in the Treeval score;
+* ``()`` (choice among list): :py:class:`treeval.metrics.ExactMatch`, which acts as an accuracy score.
 
 To use this default set of metrics, you can use the :py:func:`treeval.create_treeval_score_default_tree_metrics` method to create a tree metrics tailored to your schema.
 
