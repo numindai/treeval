@@ -1,6 +1,6 @@
 
 ====================================
-Conceptual guide of evaluating trees
+Conceptual guide
 ====================================
 
 This page details how treeval works conceptually.
@@ -77,14 +77,21 @@ Precision, Recall, F1 and mismatching tree branches
 When evaluating a pair of reference and hypothesis trees, they might not follow the exact same tree structure, i.e. the hypothesis may have additional nodes and branches that does not exist in the reference (false positives), and/or might miss nodes and branches present in the reference (false negatives).
 Additionally some leaves types might be "Null" (Python ``None``) marking an explicit absence of value. All the metrics cannot reliably evaluates cases where one or both values are "Null", or simply absent from the tree, thus computing scores for these cases is tricky. Assigning a "default" penalizing value is another option, that might however "corrupt" the final average metrics scores depending on the proportion of such cases, making difficult to interpret the results and report the performances on the actual "correct" nodes.
 
-For these reasons, **Treeval only computes metrics scores on the pairs of leaves that are both present in the reference and hypothesis**, and **report separately precision, recall and f1 scores at the tree-level of the present of the nodes and null values**. These results are mapped in the the output :py:func:`treeval.treeval` method by the ``precision_nodes``, ``recall_nodes``, ``f1_nodes``, ``precision_null``, ``recall_null`` and ``f1_null`` keys. The figure below gives a visual representation of how these cases are identified to compute the precision and recall scores.
+For these reasons, **Treeval only computes metrics scores on the pairs of leaves that are both present in the reference and hypothesis**, and **report separately precision, recall and f1 scores at the tree-level of the present of the nodes and leaves**. These results are mapped in the the output :py:func:`treeval.treeval` method by the ``precision_node``, ``recall_node``, ``f1_node``, ``precision_leaf``, ``recall_leaf`` and ``f1_leaf`` keys. The figure below gives a visual representation of how these cases are identified to compute the precision and recall scores.
 
-.. figure:: resources/prf_null.svg
+.. figure:: resources/prf_node_leaf.svg
    :scale: 60 %
-   :alt: Precision, Recall, F1 and null schema
+   :alt: Precision, Recall and F1 schema
    :align: center
 
-   Figure illustrating mismatches between evaluated trees, the blue one being the reference and the green one the hypothesis. The total number of reference nodes is 7, the root node not being counted. The hypothesis tree possesses 6 nodes following the same structure, that could be programmatically interpreted as having the same dictionary keys, and two additional nodes that does not exist in the reference tree. This results in a ``5/6 = 0.833`` node precision and ``5/7 = 0.714`` node recall.
-   The hypothesis tree possesses one correctly predicted ``Null`` node, and one missed (considered as false negative), resulting in a ``1/1 = 1.0`` null precision and ``1/2 = 0.5`` null recall.
+   Figure illustrating mismatches between evaluated trees, the blue one being the reference and the green one the hypothesis. The total number of reference nodes is 7, the root node not being counted. The hypothesis tree possesses 5 nodes following the same structure (labeled as "N. TP" for node true positive), that could be programmatically interpreted as having the same dictionary keys, one additional nodes that does not exist in the reference tree (labeled "N. FP" for node false positive), and missed two nodes that are present in the reference tree (labeled "N. FN" for node false negative). This results in a ``5/6 = 0.833`` **node precision** and ``5/7 = 0.714`` **node recall**.
+   Among the leaves present in both the reference and hypothesis, the hypothesis tree possesses one correctly predicted leaf type (labeled "L. TP" for leaf true positive), one correctly predicted ``Null`` leaf (labeled "L. TN" for leaf true negative), one mispredicted leaf expected to be ``Null`` (labeled "L. FP" for leaf false positive) and no ``Null`` leaf expected to be non-``Null`` (that would be considered false negatives), resulting in a ``1/2 = 0.5`` **leaf precision** and ``1/1 = 1`` **leaf recall**.
 
+Note that the leaf precision and recall scores are only computed from the leaves that are present in both the hypothesis and the reference, i.e. the leaves among the true positive nodes of the nodes precision/recall computation.
 The F1 scores are computed from the precision and recall values following the formula: ``f1 = 2 * precision * recall / (precision + recall)``.
+
+Separating these results allows an easier interpretability and makes sure that:
+
+* The **node precision/recall/F1** represents the tree similarity and measures how well the hypothesis nodes structure matches the reference;
+* The **leaf precision/recall/F1**  represents the leaves similarity and measures the correctness of the presence or non-presence of leaf values, respectively when a leaf has a non-null or a null value when it is expected to. The leaf F1 is thus only computed from the "true positives" node of the node precision/recall/F1 computation, i.e. pairs of nodes present in both the reference and hypothesis;
+* The **metrics scores** represent the performance score between reference and hypothesis leaves values, i.e. when the hypothesis tree structure is correct, how close the hypothesis leaf values are from the reference leaf values. The metrics are only computed from the "true positives" leaves of the leaf precision/recall/F1 computation, i.e. pairs of leaves with non-null values in both the reference and hypothesis.

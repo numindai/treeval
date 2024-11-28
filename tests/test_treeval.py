@@ -4,11 +4,21 @@ from __future__ import annotations
 
 import pytest
 from treeval import create_tree_metrics, treeval
+from treeval.treeval import (
+    F1_LEAF_KEY,
+    F1_NODE_KEY,
+    PRECISION_LEAF_KEY,
+    PRECISION_NODE_KEY,
+    RECALL_LEAF_KEY,
+    RECALL_NODE_KEY,
+    TREEVAL_SCORE_KEY,
+)
 
 from tests.utils_tests import COMPLETE_SCHEMA, METRICS
 
 # Test cases
 # [(schema, reference, prediction, tree_metrics, expected_scores)]
+# TODO test exact match on strings
 __simple_schema = {"n1": "string", "n2": "string", "n3": "integer"}
 __simple_schema_tree_metrics = {"n1": {"sacrebleu"}, "n2": {"sacrebleu"}, "n3": {"mse"}}
 __tree_metrics_complete_schema = create_tree_metrics(
@@ -69,9 +79,13 @@ DATA_CASES = [
                 }
             },
             "n3": {"mse": {"mse": 0.25}},
-            "precision_nodes": 0.9166666666666666,
-            "recall_nodes": 0.9166666666666666,
-            "f1_nodes": 0.9166666666666666,
+            PRECISION_NODE_KEY: 0.9166666666666666,
+            RECALL_NODE_KEY: 0.9166666666666666,
+            F1_NODE_KEY: 0.9166666666666666,
+            PRECISION_LEAF_KEY: 1,
+            RECALL_LEAF_KEY: 1,
+            F1_LEAF_KEY: 1,
+            TREEVAL_SCORE_KEY: 0.34375,
         },
     ),
     (
@@ -191,9 +205,13 @@ DATA_CASES = [
             },
             "n9": {"exact_match": {"exact_match": 1.0}},
             "n10": {"accuracy": {"accuracy": 0.5}, "sacrebleu": {"sacrebleu": 0.0}},
-            "precision_nodes": 1.0,
-            "recall_nodes": 1.0,
-            "f1_nodes": 1.0,
+            PRECISION_NODE_KEY: 1.0,
+            RECALL_NODE_KEY: 1.0,
+            F1_NODE_KEY: 1.0,
+            PRECISION_LEAF_KEY: 1,
+            RECALL_LEAF_KEY: 1,
+            F1_LEAF_KEY: 1,
+            TREEVAL_SCORE_KEY: 0.8973214285714286,
         },
     ),
 ]
@@ -213,31 +231,66 @@ __prf_tree_metrics = {
 PRF_CASES = [
     (
         __prf_schema,
-        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": 1}}],
-        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": 1}}],
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": None}}],
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": None}}],
         __prf_tree_metrics,
-        (1, 1, 1),
+        (1, 1, 1, 1, 1, 1),
     ),
     (
         __prf_schema,
-        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": 1}}],
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": None}}],
         [{"n1": 1, "n2": 1, "n3": {"n4": 1}}],
         __prf_tree_metrics,
-        (1, 0.8, 0.888888888888889),
+        (1, 0.8, 0.888888888888889, 1, 1, 1),
     ),
     (
         __prf_schema,
-        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": 1}}],
-        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": 1, "n6": 1}}],
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": None}}],
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": 1, "n6": 1}}],  # leaf: 3TP, 1FP, 0FN
         __prf_tree_metrics,
-        (0.8333333333333334, 1, 0.9090909090909091),
+        (0.8333333333333334, 1, 0.9090909090909091, 3 / 4, 1, 0.8571428571428571),
     ),
     (
         __prf_schema,
-        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": 1}}],
-        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n6": 1}}],
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": None}}],
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n6": None}}],
         __prf_tree_metrics,
-        (0.8, 0.8, 0.8),
+        (0.8, 0.8, 0.8, 1, 1, 1),
+    ),
+    (
+        __prf_schema,
+        [{"n1": 1, "n2": 1, "n3": {"n4": None, "n5": 8}}],
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": None}}],  # leaf: 2TP, 1FP, 1FN
+        __prf_tree_metrics,
+        (1, 1, 1, 2 / 3, 2 / 3, 2 / 3),
+    ),
+    (
+        __prf_schema,
+        [{"n1": 1, "n2": 1, "n3": {"n4": None, "n5": 8}}],  # nodes: 1FN, 4TP, 1FP
+        [{"n1": 1, "n3": {"n4": 1, "n5": None}, "n7": None}],  # leaves: 1TP, 1FN, 1FP
+        __prf_tree_metrics,
+        (4 / 5, 4 / 5, 4 / 5, 1 / 2, 1 / 2, 1 / 2),
+    ),
+    (
+        __prf_schema,
+        [{"n1": 1, "n2": None, "n3": {"n4": None, "n5": 8}}],  # nodes: 0FN, 5TP, 1FP
+        [{"n1": 1, "n2": 1, "n3": {"n4": 1, "n5": None}, "n7": None}],  # 1TP, 1FN, 2FP
+        __prf_tree_metrics,
+        (5 / 6, 1, 0.9090909090909091, 1 / 3, 1 / 2, 0.4),
+    ),
+    (
+        __prf_schema,
+        [{"n1": 1, "n2": 1, "n3": {"n4": None, "n5": 8}}],  # nodes: 3TP, 2FN, 1FP
+        [{"n1": 1, "n2": 1, "n3": None, "n7": None}],  # leaves: 2TP, 2FN, 0FP
+        __prf_tree_metrics,
+        (3 / 4, 3 / 5, 0.6666666666666665, 1, 2 / 4, 0.6666666666666666),
+    ),
+    (
+        __prf_schema,
+        [{"n1": 1, "n2": 1, "n3": None}],  # nodes: 3TP, 0FN, 2FP
+        [{"n1": 1, "n2": 1, "n3": {"n4": None, "n5": 8}}],  # leaves: 2TP, 0FN, 2FP
+        __prf_tree_metrics,
+        (3 / 5, 1, 0.75, 0.5, 1, 0.6666666666666666),
     ),
 ]
 __batched_prf_cases = [[], []]
@@ -250,7 +303,14 @@ PRF_CASES.append(
         __batched_prf_cases[0],
         __batched_prf_cases[1],
         __prf_tree_metrics,
-        (0.9, 0.9, 0.9),
+        (
+            0.8444444444444444,
+            0.8837209302325582,
+            0.8636363636363636,
+            0.7407407407407407,
+            0.8,
+            0.7692307692307692,
+        ),
     )
 )
 
@@ -278,6 +338,10 @@ def test_treeval_precision_recall_f1(data: tuple) -> None:
     """
     schema, reference, prediction, tree_metrics, expected_scores = data
     results = treeval(prediction, reference, schema, METRICS, tree_metrics)
-    assert results["precision_nodes"] == pytest.approx(expected_scores[0])
-    assert results["recall_nodes"] == pytest.approx(expected_scores[1])
-    assert results["f1_nodes"] == pytest.approx(expected_scores[2])
+    assert results[PRECISION_NODE_KEY] == pytest.approx(expected_scores[0])
+    assert results[RECALL_NODE_KEY] == pytest.approx(expected_scores[1])
+    assert results[F1_NODE_KEY] == pytest.approx(expected_scores[2])
+
+    assert results[PRECISION_LEAF_KEY] == pytest.approx(expected_scores[3])
+    assert results[RECALL_LEAF_KEY] == pytest.approx(expected_scores[4])
+    assert results[F1_LEAF_KEY] == pytest.approx(expected_scores[5])
