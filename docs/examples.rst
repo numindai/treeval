@@ -56,7 +56,7 @@ In some cases, you might be working with complex trees of several depths and mul
         "n3": {"n5": ["exact_match"]},
     }
 
-    tree_metrics = create_tree_metrics(tree_schema, leaves_metrics, types_metrics)
+    tree_metrics = create_tree_metrics(schema, leaves_metrics, types_metrics)
 
 Evaluating trees
 -----------------------------

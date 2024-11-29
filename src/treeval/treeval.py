@@ -263,8 +263,12 @@ def _recursive_parse(
                 metric: [[] for _ in range(len(ref))] for metric in __metrics_set
             }
             # TODO count difference of lengths between two lists -> find way to penalize
-            #  - penalty in the metrics? inject `n` worst score (n = abs(diff)))
-            #  - report additional measurement on the expected/prediction num of items
+            #  - report an additional precision/recall/F1 score for sets (abs(diff));
+            #  - negatively impact the node precision/recall, either per number of
+            #    missing/additional elements, or number of nodes when elements are
+            #    trees;
+            #  - negatively impact the metrics scores, but do it at the end from the
+            #    unbiased metrics scores and number of FP/FN.
 
             # Compute metrics, unbatched as we need to match the references/predictions.
             # For simplicity reasons, the precision/recall/f1 of dictionary items (when

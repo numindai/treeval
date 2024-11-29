@@ -412,7 +412,10 @@ class Levenshtein(TreevalMetric):
         :param metric_result: metric results as a dictionary.
         :return: absolute metric score value as a floating point number.
         """
-        return metric_result["levenshtein_ratio"]
+        # First try for levenshtein_ratio, but if the result was already aggregated
+        # (e.g. after set alignement), this entry is missing so "levenshtein" is the one
+        # to return.
+        return metric_result.get("levenshtein_ratio", metric_result["levenshtein"])
 
 
 def _exact_match_python(
