@@ -9,6 +9,9 @@ import numpy as np
 
 from .metrics import BERTScore, ExactMatch, Levenshtein
 from .utils import (
+    _average_tree_list_scores,
+    _reduce_tree_results_to_scores,
+    _tree_metrics_to_results,
     compute_matching_from_score_matrix,
     count_dictionary_nodes,
     get_unique_leaf_values,
@@ -215,6 +218,7 @@ def _recursive_parse(
     # specific types, including lists of nested dictionaries.
 
     # Leaf (basic case) --> compute metrics on values
+    # Choice among list satisfy this condition
     if not isinstance(predictions[0], (dict, list)):  # -> {metric_name: score}
         return {
             metric_name: metrics[metric_name].compute(predictions, references)
@@ -245,13 +249,13 @@ def _recursive_parse(
             if len(predictions[0]) > 0:
                 is_list_of_dicts = isinstance(predictions[_idx][0], dict)
                 break
-        __metrics_set = (
-            __get_unique_metrics_from_tree_metrics(tree_metrics)
-            if is_list_of_dicts
-            else tree_metrics
-        )
-        results = {metric_name: [] for metric_name in __metrics_set}
-        for pred, ref in zip(predictions, references):
+        if is_list_of_dicts:
+            __metrics_set = {TREEVAL_SCORE_KEY}
+            results = _tree_metrics_to_results(tree_metrics)
+        else:
+            __metrics_set = tree_metrics
+            results = {metric_name: [] for metric_name in __metrics_set}
+        for pred, ref in zip(predictions, references):  # unbatched
             # Create the matrices storing the metrics results
             # `metrics_results` stores the "raw"/complete results of each metric.
             # `metrics_scores` stores the score results of each metric.
@@ -262,6 +266,7 @@ def _recursive_parse(
             metrics_scores = {  # {metric_name: (n,m)}, score for assignment only
                 metric: [[] for _ in range(len(ref))] for metric in __metrics_set
             }
+            pr_caches = [[[0] * 6 for _ in range(len(pred))] for _ in range(len(ref))]
             # TODO count difference of lengths between two lists -> find way to penalize
             #  - report an additional precision/recall/F1 score for sets (abs(diff));
             #  - negatively impact the node precision/recall, either per number of
@@ -276,49 +281,73 @@ def _recursive_parse(
             # by treeval stops at the leaves, lists of dictionaries are considered as
             # leaves whatever their depths may be.
             # (n,m) --> {metric_name: metric_results_dict}
-            for idx, ref_i in enumerate(ref):
-                for pred_i in pred:
-                    score = _recursive_parse(
+            for ref_item_idx, ref_i in enumerate(ref):
+                for pred_item_idx, pred_i in enumerate(pred):
+                    # Compute metrics
+                    results_pair = _recursive_parse(
                         [pred_i],
                         [ref_i],
                         schema[0],  # provides either a type or a dict (list of dicts)
                         metrics,
                         tree_metrics,  # already list of metric names
-                        [0] * 6,  # mocking the pr_cache so that it doesn't return
-                    )  # the precision/recall/scores in the score dictionary (dicts).
-                    # If the items are dictionaries, we aggregate the tree results per
-                    # metric to be able to assign pairs of references/predictions.
-                    if is_list_of_dicts:
-                        score = _aggregate_results_per_metric(
-                            score, schema[0], tree_metrics, metrics
-                        )
-                    metrics_results[idx].append(score)
+                        pr_caches[ref_item_idx][pred_item_idx],
+                    )
 
+                    # Reduce metrics results to metrics scores only and save raw scores.
                     # Adds the score to the matrix.
-                    # `_aggregate_results_per_metric` (list of dicts) already calls
-                    # `get_metric_score`, it should only be called in other cases.
-                    for metric_name, metric_score in score.items():
-                        metrics_scores[metric_name][idx].append(
-                            metrics[metric_name].get_metric_score(metric_score)
-                            if not is_list_of_dicts
-                            else metric_score
+                    # If the items are dictionaries, we just use the treeval score for
+                    # the assignment weights.
+                    if is_list_of_dicts:
+                        # Compute prf, need to be done here as not done at the end of
+                        # _recursive_parse as not identified as root node
+                        results_pair.update(
+                            _compute_precision_recall_f1(
+                                pr_caches[ref_item_idx][pred_item_idx]
+                            )
                         )
+                        metrics_scores[TREEVAL_SCORE_KEY][ref_item_idx].append(
+                            _treeval_score(
+                                _aggregate_results_per_metric(
+                                    results_pair, schema[0], tree_metrics, metrics
+                                ),
+                                metrics,
+                            )
+                        )
+                        _reduce_tree_results_to_scores(results_pair, schema[0], metrics)
+                    # Otherwise we use the average of the metrics scores.
+                    else:
+                        for metric_name, metric_results in results_pair.items():
+                            metric_score = metrics[metric_name].get_metric_score(
+                                metric_results
+                            )
+                            metrics_scores[metric_name][ref_item_idx].append(
+                                metric_score
+                            )
+                            results_pair[metric_name] = metric_score
+
+                    metrics_results[ref_item_idx].append(results_pair)
 
             # Normalize metrics scores matrices between within [0, 1]
             # TODO support non-unidirectional metrics (when not higher/lower better)
-            for metric_name in metrics_scores:
-                metric_score_array = np.array(metrics_scores[metric_name])
-                if len(metrics_scores) > 1:  # no need if only one metric
-                    if metrics[metric_name].score_range != (0, 1):
-                        low_bound, high_bound = metrics[metric_name].score_range
-                        metric_score_array = (
-                            metric_score_array.clip(low_bound, high_bound) - low_bound
-                        ) / (high_bound - low_bound)
-                    if not metrics[metric_name].higher_is_better:
-                        metric_score_array = (
-                            np.ones_like(metric_score_array) - metric_score_array
-                        )
-                metrics_scores[metric_name] = metric_score_array
+            if not is_list_of_dicts:
+                for metric_name in metrics_scores:
+                    metric_score_array = np.array(metrics_scores[metric_name])
+                    if len(metrics_scores) > 1:  # no need if only one metric
+                        if metrics[metric_name].score_range != (0, 1):
+                            low_bound, high_bound = metrics[metric_name].score_range
+                            metric_score_array = (
+                                metric_score_array.clip(low_bound, high_bound)
+                                - low_bound
+                            ) / (high_bound - low_bound)
+                        if not metrics[metric_name].higher_is_better:
+                            metric_score_array = (
+                                np.ones_like(metric_score_array) - metric_score_array
+                            )
+                    metrics_scores[metric_name] = metric_score_array
+            else:
+                metrics_scores[TREEVAL_SCORE_KEY] = np.array(
+                    metrics_scores[TREEVAL_SCORE_KEY]
+                )
 
             # Average the normalized arrays
             if len(metrics_scores) > 1:  # [(n,m)] --> (s,n,m) --> (n,m)
@@ -330,15 +359,43 @@ def _recursive_parse(
 
             # Computes the assignment/pairs of reference/prediction items
             pairs_idx = compute_matching_from_score_matrix(metrics_scores_average)
-            for ref_idx, pred_idx in zip(*pairs_idx):
-                for metric_name in metrics_scores:
-                    results[metric_name].append(
-                        metrics_scores[metric_name][ref_idx][pred_idx]
-                    )
+            if is_list_of_dicts:
+                for ref_idx, pred_idx in zip(*pairs_idx):
+                    pair_score = metrics_results[ref_idx][pred_idx]
+                    results = merge_dicts(results, {k: pair_score[k] for k in results})
+                    for i in range(len(pr_cache)):
+                        pr_cache[i] += pr_caches[ref_idx][pred_idx][i]
+                # Update pr cache
+                if len(pred) > len(ref):  # penalize precision
+                    idx_excess = list(range(len(pred)))
+                    for pred_idx in reversed(pairs_idx[1]):
+                        del idx_excess[pred_idx]
+                    for idx in idx_excess:
+                        pr_cache[0] += count_dictionary_nodes(pred[idx])
+                elif len(pred) < len(ref):  # penalize recall
+                    idx_excess = list(range(len(ref)))
+                    for ref_idx in reversed(pairs_idx[0]):
+                        del idx_excess[ref_idx]
+                    for idx in idx_excess:
+                        pr_cache[2] += count_dictionary_nodes(ref[idx])
+            else:
+                for ref_idx, pred_idx in zip(*pairs_idx):
+                    for metric_name in metrics_scores:
+                        results[metric_name].append(
+                            metrics_results[ref_idx][pred_idx][metric_name]
+                        )
+                # Update pr cache
+                if len(pred) > len(ref):  # penalize precision
+                    pr_cache[0] += len(pred) - len(ref)
+                elif len(pred) < len(ref):  # penalize recall
+                    pr_cache[2] += len(ref) - len(pred)
 
         # Average, return {metric_res} only
         # We can't return other metric elements as we didn't batch the computations, and
         # we can't assume how to average them, so we only cover the score.
+        if is_list_of_dicts:
+            _average_tree_list_scores(results)
+            return results
         return {
             metric_name: {metric_name: sum(metric_scores) / len(metric_scores)}
             for metric_name, metric_scores in results.items()
@@ -420,26 +477,40 @@ def _recursive_parse(
 
     # Compute the precision, recall and f1 scores of the predicted nodes/leaves
     if root_node:
-        # tp + fn should be equal to len(references) * count_dictionary_nodes(schema)
-        # there is no tn for nodes, for leaves yes (`None` leaf values in references)
-        total_num_nodes, tp_node, fn_node, tp_leaf, fn_leaf, fp_leaf = pr_cache
+        results.update(_compute_precision_recall_f1(pr_cache))
 
-        # Add node precision/recall/f1 scores to the results
-        fp_node = total_num_nodes - tp_node  # predicted nodes not in references
-        precision_node = tp_node / (tp_node + fp_node)
-        recall_node = tp_node / (tp_node + fn_node)
-        results[PRECISION_NODE_KEY] = precision_node
-        results[RECALL_NODE_KEY] = recall_node
-        results[F1_NODE_KEY] = __compute_f1(precision_node, recall_node)
+    return results
 
-        # Add leaf precision/recall/f1 scores to the results
-        # cases where no None at all --> 1 scores
-        # num_leaves = tn_leaf + tp_leaf + fn_leaf + fp_leaf
-        precision_leaf = tp_leaf / (tp_leaf + fp_leaf) if tp_leaf + fp_leaf > 0 else 1
-        recall_leaf = tp_leaf / (tp_leaf + fn_leaf) if tp_leaf + fn_leaf > 0 else 1
-        results[PRECISION_LEAF_KEY] = precision_leaf
-        results[RECALL_LEAF_KEY] = recall_leaf
-        results[F1_LEAF_KEY] = __compute_f1(precision_leaf, recall_leaf)
+
+def _compute_precision_recall_f1(pr_cache: list[int]) -> dict[str, float]:
+    """
+    Compute the node and leaf precision/recall/F1 scores.
+
+    :param pr_cache: true/false positives/negatives for nodes/leaves.
+    :return: dictionary holding the node and leaf precision/recall/F1 scores.
+    """
+    results = {}
+
+    # tp + fn should be equal to len(references) * count_dictionary_nodes(schema)
+    # there is no tn for nodes, for leaves yes (`None` leaf values in references)
+    total_num_nodes, tp_node, fn_node, tp_leaf, fn_leaf, fp_leaf = pr_cache
+
+    # Add node precision/recall/f1 scores to the results
+    fp_node = total_num_nodes - tp_node  # predicted nodes not in references
+    precision_node = tp_node / (tp_node + fp_node)
+    recall_node = tp_node / (tp_node + fn_node)
+    results[PRECISION_NODE_KEY] = precision_node
+    results[RECALL_NODE_KEY] = recall_node
+    results[F1_NODE_KEY] = __compute_f1(precision_node, recall_node)
+
+    # Add leaf precision/recall/f1 scores to the results
+    # cases where no None at all --> 1 scores
+    # num_leaves = tn_leaf + tp_leaf + fn_leaf + fp_leaf
+    precision_leaf = tp_leaf / (tp_leaf + fp_leaf) if tp_leaf + fp_leaf > 0 else 1
+    recall_leaf = tp_leaf / (tp_leaf + fn_leaf) if tp_leaf + fn_leaf > 0 else 1
+    results[PRECISION_LEAF_KEY] = precision_leaf
+    results[RECALL_LEAF_KEY] = recall_leaf
+    results[F1_LEAF_KEY] = __compute_f1(precision_leaf, recall_leaf)
 
     return results
 
@@ -529,24 +600,6 @@ def create_tree_metrics(
     return tree_metrics
 
 
-def __get_unique_metrics_from_tree_metrics(tree_metrics: dict) -> set[str]:
-    """
-    Get the set of unique metric names present in a "tree metrics".
-
-    :param tree_metrics: dictionary with the same schema/structure as ``results``
-        specifying at each leaf the set of metrics to use for evaluate them, referenced
-        by their names as found in the ``results``.
-    :return: set of the names of the unique metrics present in ``tree_metrics``.
-    """
-    metrics_names = set()
-    for node_value in tree_metrics.values():
-        if isinstance(node_value, dict):
-            metrics_names |= __get_unique_metrics_from_tree_metrics(node_value)
-        else:
-            metrics_names |= node_value
-    return metrics_names
-
-
 def _aggregate_results_per_metric(
     results: dict,
     schema: dict,
@@ -630,12 +683,16 @@ def __aggregate_results_per_metric(
         results_node = results[node_name]
         if results_node is None:
             continue
-        if isinstance(node_value, dict):
+        # Dicts and sets of dicts
+        is_set_of_dicts = isinstance(node_value, list) and isinstance(
+            node_value[0], dict
+        )
+        if isinstance(node_value, dict) or is_set_of_dicts:
             # Need to check that the keys of the branch results are all already present
             # in the metrics_results dictionary before merging them
             branch_results = __aggregate_results_per_metric(
                 results_node,
-                node_value,
+                node_value[0] if is_set_of_dicts else node_value,
                 metrics,
                 hierarchical_averaging=hierarchical_averaging,
             )
@@ -643,6 +700,7 @@ def __aggregate_results_per_metric(
                 if branch_key not in metrics_results:
                     metrics_results[branch_key] = []
             metrics_results = merge_dicts(metrics_results, branch_results)
+        # Everything else
         else:
             for metric_name, metric_results in results_node.items():
                 if metric_name not in metrics_results:

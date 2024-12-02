@@ -203,7 +203,10 @@ DATA_CASES = [
                 },
             },
             "n9": {"exact_match": {"exact_match": 1.0}},
-            "n10": {"accuracy": {"accuracy": 0.5}, "sacrebleu": {"sacrebleu": 0.0}},
+            "n10": {
+                "n10_int": {"accuracy": {"accuracy": 0.5}},
+                "n10_string": {"sacrebleu": {"sacrebleu": 0.0}},
+            },
             PRECISION_NODE_KEY: 1.0,
             RECALL_NODE_KEY: 1.0,
             F1_NODE_KEY: 1.0,
