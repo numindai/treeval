@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
     import numpy as np
 
+    from .metrics import TreevalMetric
+
 
 def flatten_nested_dict(
     dictionary: dict, parent_key: str = "", separator: str = "."
@@ -140,6 +142,37 @@ def get_unique_leaf_values(dictionary: dict) -> set[str]:
         else:
             metrics.add(node_value)
     return metrics
+
+
+def _tree_metrics_to_results(tree_metrics: dict) -> dict:
+    results = {}
+    for node_name, node_value in tree_metrics.items():
+        if isinstance(node_value, dict):
+            results[node_name] = _tree_metrics_to_results(node_value)
+        else:
+            results[node_name] = {metric: [] for metric in node_value}
+    return results
+
+
+def _average_tree_list_scores(tree_results: dict) -> None:
+    for node_name, node_value in tree_results.copy().items():
+        if isinstance(node_value, dict):
+            _average_tree_list_scores(node_value)
+        else:
+            tree_results[node_name] = {node_name: sum(node_value) / len(node_value)}
+
+
+def _reduce_tree_results_to_scores(
+    tree_results: dict, schema: dict, metrics: dict[str, TreevalMetric]
+) -> None:
+    for node_name, node_value in schema.items():
+        if isinstance(node_value, dict):
+            _reduce_tree_results_to_scores(tree_results[node_name], node_value, metrics)
+        else:
+            for metric_name, metric_results in tree_results[node_name].copy().items():
+                tree_results[node_name][metric_name] = metrics[
+                    metric_name
+                ].get_metric_score(metric_results)
 
 
 def compute_matching_from_score_matrix(
